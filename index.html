@@ -1,0 +1,3098 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framework Gestão 📊</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK v9 - Importação Modular -->
+    <script type="module">
+        // Importar as funções necessárias do Firebase
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import { getDatabase, ref, set, get, onValue, remove, child } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js';
+
+        // Configuração do Firebase - SUAS CREDENCIAIS
+        const firebaseConfig = {
+            apiKey: "AIzaSyDoMyEQ4XGpRalbq4midqher6yUEwPd80Y",
+            authDomain: "framework-gestao.firebaseapp.com",
+            databaseURL: "https://framework-gestao-default-rtdb.firebaseio.com",
+            projectId: "framework-gestao",
+            storageBucket: "framework-gestao.firebasestorage.app",
+            messagingSenderId: "131859838839",
+            appId: "1:131859838839:web:6f4b3f2e34fed360b99372",
+            measurementId: "G-DXT4DY8RS4"
+        };
+
+        // Inicializar Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Tornar as funções do Firebase disponíveis globalmente
+        window.firebaseDatabase = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseGet = get;
+        window.firebaseOnValue = onValue;
+        window.firebaseRemove = remove;
+        window.firebaseChild = child;
+        
+        // Sinalizar que o Firebase foi inicializado
+        window.firebaseInitialized = true;
+        
+        // Disparar evento personalizado quando Firebase estiver pronto
+        window.dispatchEvent(new Event('firebaseReady'));
+    </script>
+    
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --light-color: #ecf0f1;
+            --dark-color: #2c3e50;
+            --sittax-color: #3498db;
+            --accessorias-color: #e74c3c;
+            --agendamento-color: #9b59b6;
+            --suporte-color: #3498db;
+            --onboarding-color: #2ecc71;
+            --ongoing-color: #f39c12;
+            --retencao-color: #e74c3c;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px 0;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .firebase-status {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-connected {
+            background-color: var(--success-color);
+        }
+        
+        .status-disconnected {
+            background-color: var(--accent-color);
+        }
+        
+        .status-loading {
+            background-color: var(--warning-color);
+        }
+        
+        .logo-container {
+            margin-right: 20px;
+        }
+        
+        .logo {
+            height: 60px;
+            border-radius: 5px;
+            pointer-events: none;
+        }
+        
+        .header-text {
+            text-align: left;
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 2.5rem;
+            font-weight: 700;
+        }
+        
+        .header-text p {
+            margin: 5px 0 0;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .card-header {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .card-title {
+            margin: 0;
+            color: var(--primary-color);
+            font-size: 1.2rem;
+        }
+        
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .summary-item {
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .summary-item:hover {
+            transform: translateY(-3px);
+        }
+        
+        .summary-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .positive {
+            color: var(--success-color);
+        }
+        
+        .negative {
+            color: var(--accent-color);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab {
+            padding: 15px 20px;
+            flex: 1;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+        
+        .tab.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .tab:hover:not(.active) {
+            background-color: #f5f5f5;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            position: relative;
+        }
+        
+        .data-table th {
+            background-color: var(--primary-color);
+            color: white;
+            position: sticky;
+            top: 0;
+        }
+        
+        .data-table th.editable-header {
+            cursor: pointer;
+        }
+        
+        .data-table th.editable-header:hover {
+            background-color: #34495e;
+        }
+        
+        .data-table tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .btn {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s, transform 0.2s;
+            margin-bottom: 20px;
+            margin-right: 10px;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-form {
+            background-color: var(--success-color);
+        }
+        
+        .btn-form:hover {
+            background-color: #219653;
+        }
+        
+        .btn-edit {
+            background-color: var(--warning-color);
+        }
+        
+        .btn-edit:hover {
+            background-color: #e67e22;
+        }
+        
+        .btn-delete {
+            background-color: var(--accent-color);
+        }
+        
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-firebase {
+            background-color: #FFA000;
+        }
+        
+        .btn-firebase:hover {
+            background-color: #FF8F00;
+        }
+        
+        /* Estilos do Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            width: 80%;
+            max-width: 1000px;
+            max-height: 80vh;
+            overflow-y: auto;
+            animation: modalFadeIn 0.3s;
+        }
+        
+        @keyframes modalFadeIn {
+            from {opacity: 0; transform: translateY(-20px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close:hover {
+            color: black;
+        }
+        
+        .form-container {
+            margin-top: 20px;
+        }
+        
+        .form-title {
+            color: var(--primary-color);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn-submit {
+            background-color: var(--secondary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+            margin-right: 10px;
+        }
+        
+        .btn-submit:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-cancel {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        
+        .btn-cancel:hover {
+            background-color: #c0392b;
+        }
+        
+        .button-group {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        
+        .form-section {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .form-section-title {
+            font-size: 18px;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 30px;
+        }
+        
+        .editable {
+            background-color: #fffde7;
+            transition: background-color 0.3s;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+            width: 100%;
+        }
+        
+        .editable:focus {
+            background-color: #fff9c4;
+            outline: none;
+            border-color: var(--warning-color);
+        }
+        
+        .delete-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 5px;
+            transition: background-color 0.3s;
+        }
+        
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .row-actions {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+        
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #7f8c8d;
+            transition: color 0.3s;
+        }
+        
+        .action-btn:hover {
+            color: var(--primary-color);
+        }
+        
+        .delete-btn-column {
+            background-color: var(--accent-color);
+        }
+        
+        .delete-btn-column:hover {
+            background-color: #c0392b;
+        }
+        
+        .product-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .sittax-badge {
+            background-color: var(--sittax-color);
+            color: white;
+        }
+        
+        .accessorias-badge {
+            background-color: var(--accessorias-color);
+            color: white;
+        }
+        
+        .sector-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        
+        .agendamento-badge {
+            background-color: var(--agendamento-color);
+            color: white;
+        }
+        
+        .suporte-badge {
+            background-color: var(--suporte-color);
+            color: white;
+        }
+        
+        .onboarding-badge {
+            background-color: var(--onboarding-color);
+            color: white;
+        }
+        
+        .ongoing-badge {
+            background-color: var(--ongoing-color);
+            color: white;
+        }
+        
+        .retencao-badge {
+            background-color: var(--retencao-color);
+            color: white;
+        }
+        
+        .sector-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid;
+        }
+        
+        .sector-card.agendamento {
+            border-left-color: var(--agendamento-color);
+        }
+        
+        .sector-card.suporte {
+            border-left-color: var(--suporte-color);
+        }
+        
+        .sector-card.onboarding {
+            border-left-color: var(--onboarding-color);
+        }
+        
+        .sector-card.ongoing {
+            border-left-color: var(--ongoing-color);
+        }
+        
+        .sector-card.retencao {
+            border-left-color: var(--retencao-color);
+        }
+        
+        .sector-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .sector-title i {
+            margin-right: 8px;
+        }
+        
+        .sector-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .sector-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        
+        .sector-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .sector-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .product-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .product-card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .product-card.sittax {
+            border-top: 4px solid var(--sittax-color);
+        }
+        
+        .product-card.accessorias {
+            border-top: 4px solid var(--accessorias-color);
+        }
+        
+        .product-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .product-title i {
+            margin-right: 8px;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .comparison-item {
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            background-color: #f8f9fa;
+        }
+        
+        .comparison-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+        }
+        
+        .comparison-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .comparison-value.sittax {
+            color: var(--sittax-color);
+        }
+        
+        .comparison-value.accessorias {
+            color: var(--accessorias-color);
+        }
+        
+        .sector-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sector-tab {
+            padding: 10px 15px;
+            flex: 1;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+        
+        .sector-tab.active {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .sector-tab:hover:not(.active) {
+            background-color: #f5f5f5;
+        }
+        
+        .sector-content {
+            display: none;
+        }
+        
+        .sector-content.active {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .tabs {
+                flex-direction: column;
+            }
+            
+            header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .logo-container {
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+            
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                margin-bottom: 10px;
+                width: 100%;
+            }
+            
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+            }
+            
+            .data-table {
+                font-size: 12px;
+            }
+            
+            .data-table th, .data-table td {
+                padding: 8px 10px;
+            }
+            
+            .product-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .sector-tabs {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="https://media.licdn.com/dms/image/v2/C4E0BAQFTF5ZkrxcxHg/company-logo_200_200/company-logo_200_200/0/1630622851487/setuptecnologia_logo?e=2147483647&v=beta&t=qxvmnoMPfoL2p5Lh2TgmK_KVvxXHOf32w4JRapFlbI0" class="logo" alt="Logo da Empresa">
+        </div>
+        <div class="header-text">
+            <h1>Framework Gestão 📊</h1>
+            <p>Sistema de acompanhamento por setores - Sittax e Acessorias</p>
+        </div>
+        <div class="firebase-status status-loading" id="firebaseStatus">
+            <i class="fas fa-spinner fa-spin"></i> Firebase: Inicializando...
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="button-group">
+            <button class="btn btn-form" id="openFormBtn" disabled>Lançar Dados</button>
+            <button class="btn btn-edit" id="editTableBtn" disabled>Editar Tabela</button>
+            <button class="btn btn-delete" id="manageDataBtn" disabled>Gerenciar Dados</button>
+            <button class="btn btn-firebase" id="firebaseActionsBtn" disabled>Ações Firebase</button>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('dashboard')">Dashboard</div>
+            <div class="tab" onclick="switchTab('sittax')">Sittax</div>
+            <div class="tab" onclick="switchTab('accessorias')">Acessorias</div>
+            <div class="tab" onclick="switchTab('comparativo')">Comparativo</div>
+        </div>
+
+        <div id="dashboard-tab" class="tab-content active">
+            <div class="summary">
+                <div class="summary-item">
+                    <h3>Total de Clientes</h3>
+                    <div class="summary-value" id="totalClientes">Carregando...</div>
+                    <p id="clientesPorProduto">Carregando dados...</p>
+                </div>
+                <div class="summary-item">
+                    <h3>CSAT Geral</h3>
+                    <div class="summary-value positive" id="csatGeral">Carregando...</div>
+                    <p>Média entre todos os setores</p>
+                </div>
+                <div class="summary-item">
+                    <h3>Cancelamentos</h3>
+                    <div class="summary-value negative" id="totalCancelamentos">Carregando...</div>
+                    <p>Total de cancelamentos</p>
+                </div>
+            </div>
+
+            <div class="dashboard">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Evolução de Clientes por Setor</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="clientesChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">CSAT por Setor</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="csatChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Cancelamentos por Setor</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="cancelamentosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="sittax-tab" class="tab-content">
+            <h2>Sittax - Detalhamento por Setor</h2>
+            
+            <div class="sector-tabs">
+                <div class="sector-tab active" onclick="switchSectorTab('sittax', 'agendamento')">Agendamento</div>
+                <div class="sector-tab" onclick="switchSectorTab('sittax', 'suporte')">Suporte</div>
+                <div class="sector-tab" onclick="switchSectorTab('sittax', 'onboarding')">Onboarding</div>
+                <div class="sector-tab" onclick="switchSectorTab('sittax', 'ongoing')">Ongoing</div>
+                <div class="sector-tab" onclick="switchSectorTab('sittax', 'retencao')">Retenção</div>
+            </div>
+            
+            <div id="sittax-agendamento" class="sector-content active">
+                <div class="table-container">
+                    <table class="data-table" id="sittax-agendamento-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão adicionadas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="sittax-suporte" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="sittax-suporte-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão adicionadas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="sittax-onboarding" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="sittax-onboarding-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão adicionadas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="sittax-ongoing" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="sittax-ongoing-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão adicionadas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="sittax-retencao" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="sittax-retencao-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão adicionadas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="accessorias-tab" class="tab-content">
+            <h2>Acessorias - Detalhamento por Setor</h2>
+            
+            <div class="sector-tabs">
+                <div class="sector-tab active" onclick="switchSectorTab('accessorias', 'agendamento')">Agendamento</div>
+                <div class="sector-tab" onclick="switchSectorTab('accessorias', 'suporte')">Suporte</div>
+                <div class="sector-tab" onclick="switchSectorTab('accessorias', 'onboarding')">Onboarding</div>
+                <div class="sector-tab" onclick="switchSectorTab('accessorias', 'ongoing')">Ongoing</div>
+                <div class="sector-tab" onclick="switchSectorTab('accessorias', 'retencao')">Retenção</div>
+            </div>
+            
+            <div id="accessorias-agendamento" class="sector-content active">
+                <div class="table-container">
+                    <table class="data-table" id="accessorias-agendamento-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão preenchidas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="accessorias-suporte" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="accessorias-suporte-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão preenchidas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="accessorias-onboarding" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="accessorias-onboarding-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão preenchidas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="accessorias-ongoing" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="accessorias-ongoing-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão preenchidas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="accessorias-retencao" class="sector-content">
+                <div class="table-container">
+                    <table class="data-table" id="accessorias-retencao-table">
+                        <thead>
+                            <tr>
+                                <th>Ações</th>
+                                <th>Indicador</th>
+                                <!-- Colunas de datas serão preenchidas dinamicamente -->
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="comparativo-tab" class="tab-content">
+            <h2>Comparativo Sittax vs Acessorias</h2>
+            
+            <div class="sector-tabs">
+                <div class="sector-tab active" onclick="switchComparisonTab('agendamento')">Agendamento</div>
+                <div class="sector-tab" onclick="switchComparisonTab('suporte')">Suporte</div>
+                <div class="sector-tab" onclick="switchComparisonTab('onboarding')">Onboarding</div>
+                <div class="sector-tab" onclick="switchComparisonTab('ongoing')">Ongoing</div>
+                <div class="sector-tab" onclick="switchComparisonTab('retencao')">Retenção</div>
+            </div>
+            
+            <div id="comparativo-agendamento" class="sector-content active">
+                <div class="product-comparison">
+                    <div class="product-card sittax">
+                        <div class="product-title">
+                            <i class="fas fa-calendar-check"></i> Sittax - Agendamento
+                        </div>
+                        <div class="comparison-grid" id="sittax-agendamento-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                    <div class="product-card accessorias">
+                        <div class="product-title">
+                            <i class="fas fa-calendar-check"></i> Acessorias - Agendamento
+                        </div>
+                        <div class="comparison-grid" id="accessorias-agendamento-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparativo de Agendamento</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="agendamentoComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="comparativo-suporte" class="sector-content">
+                <div class="product-comparison">
+                    <div class="product-card sittax">
+                        <div class="product-title">
+                            <i class="fas fa-headset"></i> Sittax - Suporte
+                        </div>
+                        <div class="comparison-grid" id="sittax-suporte-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                    <div class="product-card accessorias">
+                        <div class="product-title">
+                            <i class="fas fa-headset"></i> Acessorias - Suporte
+                        </div>
+                        <div class="comparison-grid" id="accessorias-suporte-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparativo de Suporte</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="suporteComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="comparativo-onboarding" class="sector-content">
+                <div class="product-comparison">
+                    <div class="product-card sittax">
+                        <div class="product-title">
+                            <i class="fas fa-user-plus"></i> Sittax - Onboarding
+                        </div>
+                        <div class="comparison-grid" id="sittax-onboarding-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                    <div class="product-card accessorias">
+                        <div class="product-title">
+                            <i class="fas fa-user-plus"></i> Acessorias - Onboarding
+                        </div>
+                        <div class="comparison-grid" id="accessorias-onboarding-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparativo de Onboarding</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="onboardingComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="comparativo-ongoing" class="sector-content">
+                <div class="product-comparison">
+                    <div class="product-card sittax">
+                        <div class="product-title">
+                            <i class="fas fa-chart-line"></i> Sittax - Ongoing
+                        </div>
+                        <div class="comparison-grid" id="sittax-ongoing-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                    <div class="product-card accessorias">
+                        <div class="product-title">
+                            <i class="fas fa-chart-line"></i> Acessorias - Ongoing
+                        </div>
+                        <div class="comparison-grid" id="accessorias-ongoing-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparativo de Ongoing</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="ongoingComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="comparativo-retencao" class="sector-content">
+                <div class="product-comparison">
+                    <div class="product-card sittax">
+                        <div class="product-title">
+                            <i class="fas fa-hand-holding-usd"></i> Sittax - Retenção
+                        </div>
+                        <div class="comparison-grid" id="sittax-retencao-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                    <div class="product-card accessorias">
+                        <div class="product-title">
+                            <i class="fas fa-hand-holding-usd"></i> Acessorias - Retenção
+                        </div>
+                        <div class="comparison-grid" id="accessorias-retencao-comparison">
+                            <!-- Dados serão preenchidos via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="margin-top: 20px;">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparativo de Retenção</h3>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="retencaoComparisonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal do Formulário -->
+    <div id="formModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="form-title">Lançamento de Dados</h2>
+            
+            <div class="form-container">
+                <form id="data-form">
+                    <div class="form-section">
+                        <h3 class="form-section-title">Período e Produto</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="data-data">Data:</label>
+                                <input type="date" id="data-data" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="data-produto">Produto:</label>
+                                <select id="data-produto" required>
+                                    <option value="">Selecione o produto</option>
+                                    <option value="sittax">Sittax</option>
+                                    <option value="accessorias">Acessorias</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="data-setor">Setor:</label>
+                                <select id="data-setor" required>
+                                    <option value="">Selecione o setor</option>
+                                    <option value="agendamento">Agendamento</option>
+                                    <option value="suporte">Suporte</option>
+                                    <option value="onboarding">Onboarding</option>
+                                    <option value="ongoing">Ongoing</option>
+                                    <option value="retencao">Retenção</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="form-section-title">Indicadores do Setor</h3>
+                        <div id="indicadores-container">
+                            <!-- Os campos serão preenchidos dinamicamente conforme o setor selecionado -->
+                        </div>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button type="submit" class="btn-submit">Salvar Dados</button>
+                        <button type="button" class="btn-cancel" id="closeFormBtn">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Gerenciamento de Dados -->
+    <div id="manageModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="form-title">Gerenciar Dados</h2>
+            
+            <div class="form-container">
+                <div class="form-section">
+                    <h3 class="form-section-title">Adicionar Data</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="new-date">Nova Data:</label>
+                            <input type="date" id="new-date">
+                        </div>
+                        <div class="form-group">
+                            <label for="add-date-product">Produto:</label>
+                            <select id="add-date-product">
+                                <option value="all">Todos os Produtos</option>
+                                <option value="sittax">Sittax</option>
+                                <option value="accessorias">Acessorias</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-form" id="addDateBtn">Adicionar Data</button>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="form-section-title">Excluir Data</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="delete-date">Selecionar Data:</label>
+                            <select id="delete-date">
+                                <!-- Opções serão preenchidas via JavaScript -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="delete-date-product">Produto:</label>
+                            <select id="delete-date-product">
+                                <option value="all">Todos os Produtos</option>
+                                <option value="sittax">Sittax</option>
+                                <option value="accessorias">Acessorias</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-delete" id="deleteDateBtn">Excluir Data</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal do Firebase -->
+    <div id="firebaseModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 class="form-title">Ações Firebase</h2>
+            
+            <div class="form-container">
+                <div class="form-section">
+                    <h3 class="form-section-title">Status da Conexão</h3>
+                    <p id="connectionStatusText">Verificando conexão...</p>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="form-section-title">Backup de Dados</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="backup-name">Nome do Backup (opcional):</label>
+                            <input type="text" id="backup-name" placeholder="Ex: backup-setembro-2025">
+                        </div>
+                    </div>
+                    <button class="btn btn-firebase" id="saveToFirebaseBtn">Salvar Backup no Firebase</button>
+                    <button class="btn btn-form" id="loadFromFirebaseBtn">Carregar Dados do Firebase</button>
+                    <button class="btn btn-delete" id="clearFirebaseBtn">Limpar Dados do Firebase</button>
+                </div>
+                
+                <div class="form-section">
+                    <h3 class="form-section-title">Lista de Backups</h3>
+                    <div id="backup-list">
+                        <p>Carregando lista de backups...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variáveis globais
+        let firebaseReady = false;
+        let editMode = false;
+        let editingHeader = null;
+
+        // Helper para converter valores nulos, vazios ou inválidos em 0
+        function safeNumber(value) {
+            if (value === undefined || value === null) return 0;
+            if (typeof value === "string") {
+                const num = parseFloat(value.toString().replace(/[^\d,-]/g, "").replace(",", "."));
+                return isNaN(num) ? 0 : num;
+            }
+            if (typeof value === "number") return value;
+            return 0;
+        }
+
+        // Função auxiliar para converter a data em um formato comparável para ordenação
+        function parseDate(dateStr) {
+            if (!dateStr) return 0;
+            return new Date(dateStr).getTime();
+        }
+
+        let initialData = {};
+        let charts = {};
+
+        // Estrutura de dados padrão para os setores
+        const dataStructure = {
+            agendamento: {
+                rows: [
+                    { key: 'noShowOnboarding', label: 'No Show - Onboarding', format: 'number' },
+                    { key: 'agendamentosRestatados1Etapa', label: 'Agendamentos Restatados 1 Etapa', format: 'number' },
+                    { key: 'salPrimeiroContato', label: 'SAL - Primeiro contato (Pipeline)', format: 'number' }
+                ]
+            },
+            suporte: {
+                rows: [
+                    { key: 'csat', label: 'CSAT', format: 'percentage' },
+                    { key: 'tempoEsperaTME', label: 'Tempo de Espera - TME', format: 'time' },
+                    { key: 'ticketsAbertos', label: 'Ticket Abertos', format: 'percentage' },
+                    { key: 'ticketsResolvidos', label: 'Tickets Resolvidos', format: 'number' },
+                    { key: 'quantidadeClientesCarteira', label: 'Quantidade de Clientes na Carteira (Dia)', format: 'number' },
+                    { key: 'csatSistema', label: 'CSAT Sistema', format: 'percentage' },
+                    { key: 'csatConsultor', label: 'CSAT Consultor', format: 'percentage' },
+                    { key: 'migracaoMes', label: 'Migração (Mês)', format: 'number' }
+                ]
+            },
+            onboarding: {
+                rows: [
+                    { key: 'migracaoDia', label: 'Migração (Dia)', format: 'number' },
+                    { key: 'solicitacoesCancelamento', label: 'Solicitações de Cancelamento', format: 'number' },
+                    { key: 'cancelamentoOnboarding', label: 'Cancelamento Onboarding', format: 'number' },
+                    { key: 'quantidadeInadimplente', label: 'Quantidade de Inadimplente', format: 'number' },
+                    { key: 'suspensao', label: 'Suspensão', format: 'number' },
+                    { key: 'quantidadeClientes', label: 'Quantidades de Clientes', format: 'number' },
+                    { key: 'quantidadeContatosEfetivos', label: 'Quantidades de contatos efetivos', format: 'number' }
+                ]
+            },
+            ongoing: {
+                rows: [
+                    { key: 'csat', label: 'CSAT', format: 'number' },
+                    { key: 'solicitacoesCancelamento', label: 'Solicitações de Cancelamento', format: 'number' },
+                    { key: 'cancelamento', label: 'Cancelamento', format: 'number' },
+                    { key: 'quantidadeInadimplente', label: 'Quantidade de Inadimplente', format: 'percentage' }
+                ]
+            },
+            retencao: {
+                rows: [
+                    { key: 'solicitacoesCancelamento', label: 'Solicitações de Cancelamento', format: 'number' },
+                    { key: 'reunioesRestatadas', label: 'Reuniões Restatadas', format: 'number' },
+                    { key: 'reunioesCancelamentos', label: 'Reuniões de Cancelamentos', format: 'number' },
+                    { key: 'cancelamentos', label: 'Cancelamentos', format: 'number' }
+                ]
+            }
+        };
+
+        // Inicializar dados de exemplo baseados na imagem
+        function initializeDefaultData() {
+            if (localStorage.getItem('frameworkGestaoSetoresData')) {
+                return JSON.parse(localStorage.getItem('frameworkGestaoSetoresData'));
+            }
+            
+            // Datas da imagem
+            const dates = [
+                '2025-06-26', '2025-06-27', '2025-06-30', '2025-07-01', 
+                '2025-07-02', '2025-07-03', '2025-07-04', '2025-07-07',
+                '2025-07-08', '2025-07-09', '2025-07-10'
+            ];
+            
+            // Dados de exemplo para Sittax baseados na imagem
+            const sittaxData = {
+                agendamento: {},
+                suporte: {},
+                onboarding: {},
+                ongoing: {},
+                retencao: {}
+            };
+            
+            // Dados de exemplo para Acessorias baseados na imagem
+            const accessoriasData = {
+                agendamento: {},
+                suporte: {},
+                onboarding: {},
+                ongoing: {},
+                retencao: {}
+            };
+            
+            // Preencher dados para Sittax
+            dates.forEach(date => {
+                // Agendamento
+                sittaxData.agendamento[date] = {
+                    noShowOnboarding: 0,
+                    agendamentosRestatados1Etapa: 0,
+                    salPrimeiroContato: 0
+                };
+                
+                // Suporte
+                sittaxData.suporte[date] = {
+                    csat: 96.67,
+                    tempoEsperaTME: '00:04:06',
+                    ticketsAbertos: 0,
+                    ticketsResolvidos: 0,
+                    quantidadeClientesCarteira: 366,
+                    csatSistema: 0,
+                    csatConsultor: 88.75,
+                    migracaoMes: 7
+                };
+                
+                // Onboarding
+                sittaxData.onboarding[date] = {
+                    migracaoDia: 0,
+                    solicitacoesCancelamento: 0,
+                    cancelamentoOnboarding: 0,
+                    quantidadeInadimplente: 0,
+                    suspensao: 0,
+                    quantidadeClientes: 982,
+                    quantidadeContatosEfetivos: 932
+                };
+                
+                // Ongoing
+                sittaxData.ongoing[date] = {
+                    csat: 56,
+                    solicitacoesCancelamento: 50,
+                    cancelamento: 5,
+                    quantidadeInadimplente: 6
+                };
+                
+                // Retenção
+                sittaxData.retencao[date] = {
+                    solicitacoesCancelamento: 0,
+                    reunioesRestatadas: 0,
+                    reunioesCancelamentos: 0,
+                    cancelamentos: 0
+                };
+            });
+            
+            // Preencher dados para Acessorias (valores ligeiramente diferentes para demonstração)
+            dates.forEach(date => {
+                // Agendamento
+                accessoriasData.agendamento[date] = {
+                    noShowOnboarding: 0,
+                    agendamentosRestatados1Etapa: 0,
+                    salPrimeiroContato: 0
+                };
+                
+                // Suporte
+                accessoriasData.suporte[date] = {
+                    csat: 95.5,
+                    tempoEsperaTME: '00:03:45',
+                    ticketsAbertos: 0,
+                    ticketsResolvidos: 0,
+                    quantidadeClientesCarteira: 350,
+                    csatSistema: 0,
+                    csatConsultor: 90.25,
+                    migracaoMes: 8
+                };
+                
+                // Onboarding
+                accessoriasData.onboarding[date] = {
+                    migracaoDia: 0,
+                    solicitacoesCancelamento: 0,
+                    cancelamentoOnboarding: 0,
+                    quantidadeInadimplente: 0,
+                    suspensao: 0,
+                    quantidadeClientes: 950,
+                    quantidadeContatosEfetivos: 890
+                };
+                
+                // Ongoing
+                accessoriasData.ongoing[date] = {
+                    csat: 48,
+                    solicitacoesCancelamento: 45,
+                    cancelamento: 4,
+                    quantidadeInadimplente: 5
+                };
+                
+                // Retenção
+                accessoriasData.retencao[date] = {
+                    solicitacoesCancelamento: 0,
+                    reunioesRestatadas: 0,
+                    reunioesCancelamentos: 0,
+                    cancelamentos: 0
+                };
+            });
+            
+            const defaultData = {
+                sittax: sittaxData,
+                accessorias: accessoriasData
+            };
+            
+            localStorage.setItem('frameworkGestaoSetoresData', JSON.stringify(defaultData));
+            return defaultData;
+        }
+
+        // Formatar valores para exibição
+        function formatValue(value, format) {
+            if (value === undefined || value === null || value === '') return '-';
+            
+            switch (format) {
+                case 'currency':
+                    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+                case 'percentage':
+                    return `${value}%`;
+                case 'number':
+                    return value.toLocaleString('pt-BR');
+                case 'time':
+                    return value;
+                default:
+                    return value;
+            }
+        }
+
+        // Atualizar dados no localStorage
+        function updateData() {
+            localStorage.setItem('frameworkGestaoSetoresData', JSON.stringify(initialData));
+            renderTables();
+            updateCharts();
+            updateSummary();
+        }
+
+        // Renderizar todas as tabelas
+        function renderTables() {
+            const products = ['sittax', 'accessorias'];
+            const sectors = ['agendamento', 'suporte', 'onboarding', 'ongoing', 'retencao'];
+            
+            products.forEach(product => {
+                sectors.forEach(sector => {
+                    renderTable(product, sector);
+                });
+            });
+            
+            updateComparison();
+            updateDateSelects();
+        }
+
+        // Renderizar tabela específica
+        function renderTable(product, sector) {
+            const table = document.getElementById(`${product}-${sector}-table`);
+            if (!table) return;
+            
+            const tbody = table.querySelector('tbody');
+            const thead = table.querySelector('thead tr');
+            
+            // Limpar tabela
+            tbody.innerHTML = '';
+            
+            // Obter todas as datas disponíveis para o produto/setor
+            const dates = Object.keys(initialData[product][sector] || {});
+            dates.sort((a, b) => parseDate(a) - parseDate(b));
+            
+            // Atualizar cabeçalho com as datas
+            const existingHeaders = Array.from(thead.querySelectorAll('th')).slice(2); // Ignorar as duas primeiras colunas
+            const existingDates = existingHeaders.map(th => th.dataset.date);
+            
+            // Remover cabeçalhos de datas que não existem mais
+            existingHeaders.forEach((th, index) => {
+                if (!dates.includes(existingDates[index])) {
+                    th.remove();
+                }
+            });
+            
+            // Adicionar novos cabeçalhos de data
+            dates.forEach(date => {
+                if (!existingDates.includes(date)) {
+                    const th = document.createElement('th');
+                    th.textContent = new Date(date).toLocaleDateString('pt-BR');
+                    th.dataset.date = date;
+                    th.classList.add('editable-header');
+                    th.addEventListener('click', () => editHeader(th, product, sector));
+                    thead.appendChild(th);
+                }
+            });
+            
+            // Adicionar linhas de dados
+            dataStructure[sector].rows.forEach(row => {
+                const tr = document.createElement('tr');
+                
+                // Coluna de ações
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'row-actions';
+                actionsCell.innerHTML = `
+                    <button class="action-btn edit-row" title="Editar linha"><i class="fas fa-edit"></i></button>
+                    <button class="action-btn delete-row" title="Excluir linha"><i class="fas fa-trash"></i></button>
+                `;
+                tr.appendChild(actionsCell);
+                
+                // Coluna do indicador
+                const labelCell = document.createElement('td');
+                labelCell.textContent = row.label;
+                labelCell.style.textAlign = 'left';
+                tr.appendChild(labelCell);
+                
+                // Colunas de dados por data
+                dates.forEach(date => {
+                    const td = document.createElement('td');
+                    const value = initialData[product][sector][date] ? initialData[product][sector][date][row.key] : '';
+                    td.textContent = value ? formatValue(value, row.format) : '-';
+                    td.dataset.date = date;
+                    td.dataset.key = row.key;
+                    td.dataset.product = product;
+                    td.dataset.sector = sector;
+                    td.dataset.format = row.format;
+                    
+                    if (editMode) {
+                        td.addEventListener('click', () => editCell(td));
+                    }
+                    
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Adicionar event listeners para ações de linha
+            tbody.querySelectorAll('.edit-row').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const label = row.querySelector('td:nth-child(2)').textContent;
+                    alert(`Editar linha: ${label}`);
+                });
+            });
+            
+            tbody.querySelectorAll('.delete-row').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const row = this.closest('tr');
+                    const label = row.querySelector('td:nth-child(2)').textContent;
+                    if (confirm(`Tem certeza que deseja excluir a linha "${label}"?`)) {
+                        row.remove();
+                    }
+                });
+            });
+        }
+
+        // Editar célula
+        function editCell(cell) {
+            const currentValue = initialData[cell.dataset.product][cell.dataset.sector][cell.dataset.date][cell.dataset.key];
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = currentValue || '';
+            input.className = 'editable';
+            
+            cell.innerHTML = '';
+            cell.appendChild(input);
+            input.focus();
+            
+            const saveValue = () => {
+                let newValue = input.value;
+                
+                // Converter para número se necessário
+                if (cell.dataset.format === 'number' || cell.dataset.format === 'percentage') {
+                    newValue = parseFloat(newValue.replace(',', '.'));
+                    if (isNaN(newValue)) newValue = 0;
+                }
+                
+                // Atualizar dados
+                if (!initialData[cell.dataset.product][cell.dataset.sector][cell.dataset.date]) {
+                    initialData[cell.dataset.product][cell.dataset.sector][cell.dataset.date] = {};
+                }
+                initialData[cell.dataset.product][cell.dataset.sector][cell.dataset.date][cell.dataset.key] = newValue;
+                
+                // Atualizar exibição
+                cell.textContent = formatValue(newValue, cell.dataset.format);
+                
+                // Atualizar localStorage e gráficos
+                updateData();
+            };
+            
+            input.addEventListener('blur', saveValue);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveValue();
+                }
+            });
+        }
+
+        // Editar cabeçalho (data)
+        function editHeader(header, product, sector) {
+            if (!editMode) return;
+            
+            const currentDate = header.dataset.date;
+            const input = document.createElement('input');
+            input.type = 'date';
+            input.value = currentDate;
+            input.className = 'editable';
+            
+            header.innerHTML = '';
+            header.appendChild(input);
+            input.focus();
+            
+            editingHeader = { element: header, product, sector, oldDate: currentDate };
+            
+            const saveHeader = () => {
+                const newDate = input.value;
+                
+                if (newDate && newDate !== currentDate) {
+                    // Verificar se a data já existe
+                    if (initialData[product][sector][newDate]) {
+                        alert('Já existe uma entrada para esta data!');
+                        header.textContent = new Date(currentDate).toLocaleDateString('pt-BR');
+                        header.dataset.date = currentDate;
+                        return;
+                    }
+                    
+                    // Mover dados para a nova data
+                    initialData[product][sector][newDate] = initialData[product][sector][currentDate];
+                    delete initialData[product][sector][currentDate];
+                    
+                    // Atualizar cabeçalho
+                    header.textContent = new Date(newDate).toLocaleDateString('pt-BR');
+                    header.dataset.date = newDate;
+                    
+                    // Atualizar localStorage e gráficos
+                    updateData();
+                } else {
+                    // Restaurar cabeçalho original
+                    header.textContent = new Date(currentDate).toLocaleDateString('pt-BR');
+                    header.dataset.date = currentDate;
+                }
+                
+                editingHeader = null;
+            };
+            
+            input.addEventListener('blur', saveHeader);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveHeader();
+                }
+            });
+        }
+
+        // Atualizar gráficos
+        function updateCharts() {
+            updateClientesChart();
+            updateCsatChart();
+            updateCancelamentosChart();
+            updateComparisonCharts();
+        }
+
+        // Gráfico de evolução de clientes por setor
+        function updateClientesChart() {
+            const ctx = document.getElementById('clientesChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.suporte).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.suporte).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.suporte[date] ? safeNumber(initialData.sittax.suporte[date].quantidadeClientesCarteira) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.suporte).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.suporte[date] ? safeNumber(initialData.accessorias.suporte[date].quantidadeClientesCarteira) : 0;
+            });
+            
+            if (charts.clientesChart) {
+                charts.clientesChart.destroy();
+            }
+            
+            charts.clientesChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantidade de Clientes'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Evolução de Clientes na Carteira'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de CSAT por setor
+        function updateCsatChart() {
+            const ctx = document.getElementById('csatChart').getContext('2d');
+            
+            // Dados para o gráfico
+            const setores = ['Suporte', 'Onboarding', 'Ongoing'];
+            const sittaxData = [];
+            const accessoriasData = [];
+            
+            // Calcular médias para Sittax
+            setores.forEach((setor, index) => {
+                const sectorKey = setor.toLowerCase();
+                let total = 0;
+                let count = 0;
+                
+                Object.keys(initialData.sittax[sectorKey]).forEach(date => {
+                    const data = initialData.sittax[sectorKey][date];
+                    if (data.csat !== undefined) {
+                        total += safeNumber(data.csat);
+                        count++;
+                    }
+                });
+                
+                sittaxData.push(count > 0 ? total / count : 0);
+            });
+            
+            // Calcular médias para Acessorias
+            setores.forEach((setor, index) => {
+                const sectorKey = setor.toLowerCase();
+                let total = 0;
+                let count = 0;
+                
+                Object.keys(initialData.accessorias[sectorKey]).forEach(date => {
+                    const data = initialData.accessorias[sectorKey][date];
+                    if (data.csat !== undefined) {
+                        total += safeNumber(data.csat);
+                        count++;
+                    }
+                });
+                
+                accessoriasData.push(count > 0 ? total / count : 0);
+            });
+            
+            if (charts.csatChart) {
+                charts.csatChart.destroy();
+            }
+            
+            charts.csatChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: setores,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'CSAT (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'CSAT por Setor'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de cancelamentos por setor
+        function updateCancelamentosChart() {
+            const ctx = document.getElementById('cancelamentosChart').getContext('2d');
+            
+            // Dados para o gráfico
+            const setores = ['Onboarding', 'Ongoing', 'Retenção'];
+            const sittaxData = [];
+            const accessoriasData = [];
+            
+            // Calcular totais para Sittax
+            setores.forEach((setor, index) => {
+                const sectorKey = setor.toLowerCase();
+                let total = 0;
+                
+                Object.keys(initialData.sittax[sectorKey]).forEach(date => {
+                    const data = initialData.sittax[sectorKey][date];
+                    if (data.cancelamento !== undefined) {
+                        total += safeNumber(data.cancelamento);
+                    } else if (data.cancelamentos !== undefined) {
+                        total += safeNumber(data.cancelamentos);
+                    } else if (data.cancelamentoOnboarding !== undefined) {
+                        total += safeNumber(data.cancelamentoOnboarding);
+                    }
+                });
+                
+                sittaxData.push(total);
+            });
+            
+            // Calcular totais para Acessorias
+            setores.forEach((setor, index) => {
+                const sectorKey = setor.toLowerCase();
+                let total = 0;
+                
+                Object.keys(initialData.accessorias[sectorKey]).forEach(date => {
+                    const data = initialData.accessorias[sectorKey][date];
+                    if (data.cancelamento !== undefined) {
+                        total += safeNumber(data.cancelamento);
+                    } else if (data.cancelamentos !== undefined) {
+                        total += safeNumber(data.cancelamentos);
+                    } else if (data.cancelamentoOnboarding !== undefined) {
+                        total += safeNumber(data.cancelamentoOnboarding);
+                    }
+                });
+                
+                accessoriasData.push(total);
+            });
+            
+            if (charts.cancelamentosChart) {
+                charts.cancelamentosChart.destroy();
+            }
+            
+            charts.cancelamentosChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: setores,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.7)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantidade de Cancelamentos'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Cancelamentos por Setor'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Atualizar gráficos de comparação
+        function updateComparisonCharts() {
+            updateAgendamentoComparisonChart();
+            updateSuporteComparisonChart();
+            updateOnboardingComparisonChart();
+            updateOngoingComparisonChart();
+            updateRetencaoComparisonChart();
+        }
+
+        // Gráfico de comparação de agendamento
+        function updateAgendamentoComparisonChart() {
+            const ctx = document.getElementById('agendamentoComparisonChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.agendamento).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.agendamento).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.agendamento[date] ? safeNumber(initialData.sittax.agendamento[date].agendamentosRestatados1Etapa) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.agendamento).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.agendamento[date] ? safeNumber(initialData.accessorias.agendamento[date].agendamentosRestatados1Etapa) : 0;
+            });
+            
+            if (charts.agendamentoComparisonChart) {
+                charts.agendamentoComparisonChart.destroy();
+            }
+            
+            charts.agendamentoComparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Agendamentos Restatados'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparativo de Agendamento'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de comparação de suporte
+        function updateSuporteComparisonChart() {
+            const ctx = document.getElementById('suporteComparisonChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.suporte).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.suporte).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.suporte[date] ? safeNumber(initialData.sittax.suporte[date].csatConsultor) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.suporte).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.suporte[date] ? safeNumber(initialData.accessorias.suporte[date].csatConsultor) : 0;
+            });
+            
+            if (charts.suporteComparisonChart) {
+                charts.suporteComparisonChart.destroy();
+            }
+            
+            charts.suporteComparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'CSAT Consultor (%)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparativo de Suporte (CSAT Consultor)'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de comparação de onboarding
+        function updateOnboardingComparisonChart() {
+            const ctx = document.getElementById('onboardingComparisonChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.onboarding).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.onboarding).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.onboarding[date] ? safeNumber(initialData.sittax.onboarding[date].quantidadeClientes) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.onboarding).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.onboarding[date] ? safeNumber(initialData.accessorias.onboarding[date].quantidadeClientes) : 0;
+            });
+            
+            if (charts.onboardingComparisonChart) {
+                charts.onboardingComparisonChart.destroy();
+            }
+            
+            charts.onboardingComparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantidade de Clientes'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparativo de Onboarding (Quantidade de Clientes)'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de comparação de ongoing
+        function updateOngoingComparisonChart() {
+            const ctx = document.getElementById('ongoingComparisonChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.ongoing).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.ongoing).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.ongoing[date] ? safeNumber(initialData.sittax.ongoing[date].csat) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.ongoing).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.ongoing[date] ? safeNumber(initialData.accessorias.ongoing[date].csat) : 0;
+            });
+            
+            if (charts.ongoingComparisonChart) {
+                charts.ongoingComparisonChart.destroy();
+            }
+            
+            charts.ongoingComparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'CSAT'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparativo de Ongoing (CSAT)'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Gráfico de comparação de retenção
+        function updateRetencaoComparisonChart() {
+            const ctx = document.getElementById('retencaoComparisonChart').getContext('2d');
+            
+            // Datas para o eixo X
+            const dates = Object.keys(initialData.sittax.retencao).map(date => 
+                new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+            );
+            
+            // Dados para Sittax
+            const sittaxData = dates.map(dateStr => {
+                const date = Object.keys(initialData.sittax.retencao).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.sittax.retencao[date] ? safeNumber(initialData.sittax.retencao[date].solicitacoesCancelamento) : 0;
+            });
+            
+            // Dados para Acessorias
+            const accessoriasData = dates.map(dateStr => {
+                const date = Object.keys(initialData.accessorias.retencao).find(d => 
+                    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) === dateStr
+                );
+                return initialData.accessorias.retencao[date] ? safeNumber(initialData.accessorias.retencao[date].solicitacoesCancelamento) : 0;
+            });
+            
+            if (charts.retencaoComparisonChart) {
+                charts.retencaoComparisonChart.destroy();
+            }
+            
+            charts.retencaoComparisonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [
+                        {
+                            label: 'Sittax',
+                            data: sittaxData,
+                            backgroundColor: 'rgba(52, 152, 219, 0.2)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Acessorias',
+                            data: accessoriasData,
+                            backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                            borderColor: 'rgba(231, 76, 60, 1)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Solicitações de Cancelamento'
+                            }
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Comparativo de Retenção (Solicitações de Cancelamento)'
+                        },
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Atualizar resumo
+        function updateSummary() {
+            // Calcular totais
+            let totalClientesSittax = 0;
+            let totalClientesAccessorias = 0;
+            let totalCsatSittax = 0;
+            let totalCsatAccessorias = 0;
+            let totalCancelamentosSittax = 0;
+            let totalCancelamentosAccessorias = 0;
+            let countSittax = 0;
+            let countAccessorias = 0;
+            
+            // Calcular para Sittax
+            Object.keys(initialData.sittax.suporte).forEach(date => {
+                const data = initialData.sittax.suporte[date];
+                totalClientesSittax += safeNumber(data.quantidadeClientesCarteira);
+                totalCsatSittax += safeNumber(data.csatConsultor);
+                countSittax++;
+            });
+            
+            Object.keys(initialData.sittax.ongoing).forEach(date => {
+                const data = initialData.sittax.ongoing[date];
+                totalCancelamentosSittax += safeNumber(data.cancelamento);
+            });
+            
+            // Calcular para Acessorias
+            Object.keys(initialData.accessorias.suporte).forEach(date => {
+                const data = initialData.accessorias.suporte[date];
+                totalClientesAccessorias += safeNumber(data.quantidadeClientesCarteira);
+                totalCsatAccessorias += safeNumber(data.csatConsultor);
+                countAccessorias++;
+            });
+            
+            Object.keys(initialData.accessorias.ongoing).forEach(date => {
+                const data = initialData.accessorias.ongoing[date];
+                totalCancelamentosAccessorias += safeNumber(data.cancelamento);
+            });
+            
+            // Atualizar elementos do resumo
+            document.getElementById('totalClientes').textContent = (totalClientesSittax + totalClientesAccessorias).toLocaleString('pt-BR');
+            document.getElementById('csatGeral').textContent = ((totalCsatSittax / countSittax + totalCsatAccessorias / countAccessorias) / 2).toFixed(2) + '%';
+            document.getElementById('totalCancelamentos').textContent = (totalCancelamentosSittax + totalCancelamentosAccessorias).toLocaleString('pt-BR');
+            
+            document.getElementById('clientesPorProduto').innerHTML = `
+                Sittax: <span class="sittax-badge product-badge">${totalClientesSittax.toLocaleString('pt-BR')}</span> | 
+                Acessorias: <span class="accessorias-badge product-badge">${totalClientesAccessorias.toLocaleString('pt-BR')}</span>
+            `;
+        }
+
+        // Atualizar comparação entre produtos
+        function updateComparison() {
+            const sectors = ['agendamento', 'suporte', 'onboarding', 'ongoing', 'retencao'];
+            
+            sectors.forEach(sector => {
+                updateSectorComparison('sittax', sector);
+                updateSectorComparison('accessorias', sector);
+            });
+        }
+
+        // Atualizar comparação de setor específico
+        function updateSectorComparison(product, sector) {
+            const comparisonElement = document.getElementById(`${product}-${sector}-comparison`);
+            if (!comparisonElement) return;
+            
+            // Calcular totais/médias para o setor
+            let totalClientes = 0;
+            let totalCsat = 0;
+            let totalCancelamentos = 0;
+            let totalSolicitacoes = 0;
+            let count = 0;
+            
+            Object.keys(initialData[product][sector]).forEach(date => {
+                const data = initialData[product][sector][date];
+                
+                if (data.quantidadeClientesCarteira !== undefined) {
+                    totalClientes += safeNumber(data.quantidadeClientesCarteira);
+                } else if (data.quantidadeClientes !== undefined) {
+                    totalClientes += safeNumber(data.quantidadeClientes);
+                }
+                
+                if (data.csat !== undefined) {
+                    totalCsat += safeNumber(data.csat);
+                    count++;
+                } else if (data.csatConsultor !== undefined) {
+                    totalCsat += safeNumber(data.csatConsultor);
+                    count++;
+                }
+                
+                if (data.cancelamento !== undefined) {
+                    totalCancelamentos += safeNumber(data.cancelamento);
+                } else if (data.cancelamentos !== undefined) {
+                    totalCancelamentos += safeNumber(data.cancelamentos);
+                } else if (data.cancelamentoOnboarding !== undefined) {
+                    totalCancelamentos += safeNumber(data.cancelamentoOnboarding);
+                }
+                
+                if (data.solicitacoesCancelamento !== undefined) {
+                    totalSolicitacoes += safeNumber(data.solicitacoesCancelamento);
+                }
+            });
+            
+            const avgClientes = totalClientes / Object.keys(initialData[product][sector]).length;
+            const avgCsat = count > 0 ? totalCsat / count : 0;
+            
+            comparisonElement.innerHTML = `
+                <div class="comparison-item">
+                    <div class="comparison-label">Clientes</div>
+                    <div class="comparison-value ${product}">${avgClientes.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-label">CSAT</div>
+                    <div class="comparison-value ${product}">${avgCsat.toFixed(2)}%</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-label">Cancelamentos</div>
+                    <div class="comparison-value ${product}">${totalCancelamentos}</div>
+                </div>
+                <div class="comparison-item">
+                    <div class="comparison-label">Solicitações</div>
+                    <div class="comparison-value ${product}">${totalSolicitacoes}</div>
+                </div>
+            `;
+        }
+
+        // Atualizar selects de data
+        function updateDateSelects() {
+            const deleteDateSelect = document.getElementById('delete-date');
+            
+            // Obter todas as datas únicas
+            const allDates = new Set();
+            Object.keys(initialData.sittax.suporte).forEach(date => allDates.add(date));
+            Object.keys(initialData.accessorias.suporte).forEach(date => allDates.add(date));
+            
+            const sortedDates = Array.from(allDates).sort((a, b) => parseDate(a) - parseDate(b));
+            
+            // Atualizar select de exclusão
+            deleteDateSelect.innerHTML = '<option value="">Selecione uma data</option>';
+            sortedDates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = new Date(date).toLocaleDateString('pt-BR');
+                deleteDateSelect.appendChild(option);
+            });
+        }
+
+        // Alternar entre abas principais
+        function switchTab(tabName) {
+            // Desativar todas as abas
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Ativar aba selecionada
+            document.querySelector(`.tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Alternar entre abas de setor
+        function switchSectorTab(product, sector) {
+            // Desativar todas as abas de setor para o produto
+            document.querySelectorAll(`#${product}-tab .sector-tab`).forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll(`#${product}-tab .sector-content`).forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Ativar aba de setor selecionada
+            document.querySelector(`#${product}-tab .sector-tab[onclick="switchSectorTab('${product}', '${sector}')"]`).classList.add('active');
+            document.getElementById(`${product}-${sector}`).classList.add('active');
+        }
+
+        // Alternar entre abas de comparação
+        function switchComparisonTab(sector) {
+            // Desativar todas as abas de comparação
+            document.querySelectorAll('#comparativo-tab .sector-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.querySelectorAll('#comparativo-tab .sector-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Ativar aba de comparação selecionada
+            document.querySelector(`#comparativo-tab .sector-tab[onclick="switchComparisonTab('${sector}')"]`).classList.add('active');
+            document.getElementById(`comparativo-${sector}`).classList.add('active');
+        }
+
+        // Alternar modo de edição
+        function toggleEditMode() {
+            editMode = !editMode;
+            const editBtn = document.getElementById('editTableBtn');
+            
+            if (editMode) {
+                editBtn.innerHTML = '<i class="fas fa-check"></i> Finalizar Edição';
+                editBtn.classList.remove('btn-edit');
+                editBtn.classList.add('btn-form');
+            } else {
+                editBtn.innerHTML = '<i class="fas fa-edit"></i> Editar Tabela';
+                editBtn.classList.remove('btn-form');
+                editBtn.classList.add('btn-edit');
+                
+                // Finalizar qualquer edição em andamento
+                if (editingHeader) {
+                    const header = editingHeader.element;
+                    header.textContent = new Date(editingHeader.oldDate).toLocaleDateString('pt-BR');
+                    header.dataset.date = editingHeader.oldDate;
+                    editingHeader = null;
+                }
+            }
+            
+            renderTables();
+        }
+
+        // Adicionar nova data
+        function addNewDate() {
+            const newDate = document.getElementById('new-date').value;
+            const product = document.getElementById('add-date-product').value;
+            
+            if (!newDate) {
+                alert('Por favor, selecione uma data!');
+                return;
+            }
+            
+            const products = product === 'all' ? ['sittax', 'accessorias'] : [product];
+            const sectors = ['agendamento', 'suporte', 'onboarding', 'ongoing', 'retencao'];
+            
+            products.forEach(p => {
+                sectors.forEach(s => {
+                    if (!initialData[p][s][newDate]) {
+                        initialData[p][s][newDate] = {};
+                        // Inicializar com valores padrão
+                        dataStructure[s].rows.forEach(row => {
+                            initialData[p][s][newDate][row.key] = 0;
+                        });
+                    } else {
+                        alert(`A data ${newDate} já existe para ${p === 'sittax' ? 'Sittax' : 'Acessorias'} - ${s}!`);
+                    }
+                });
+            });
+            
+            updateData();
+            document.getElementById('new-date').value = '';
+        }
+
+        // Excluir data
+        function deleteDate() {
+            const dateToDelete = document.getElementById('delete-date').value;
+            const product = document.getElementById('delete-date-product').value;
+            
+            if (!dateToDelete) {
+                alert('Por favor, selecione uma data!');
+                return;
+            }
+            
+            if (!confirm(`Tem certeza que deseja excluir a data ${new Date(dateToDelete).toLocaleDateString('pt-BR')}?`)) {
+                return;
+            }
+            
+            const products = product === 'all' ? ['sittax', 'accessorias'] : [product];
+            const sectors = ['agendamento', 'suporte', 'onboarding', 'ongoing', 'retencao'];
+            
+            products.forEach(p => {
+                sectors.forEach(s => {
+                    if (initialData[p][s][dateToDelete]) {
+                        delete initialData[p][s][dateToDelete];
+                    }
+                });
+            });
+            
+            updateData();
+            document.getElementById('delete-date').value = '';
+        }
+
+        // Salvar dados no Firebase
+        async function saveToFirebase() {
+            if (!firebaseReady) {
+                alert('Firebase não está inicializado!');
+                return;
+            }
+            
+            const backupName = document.getElementById('backup-name').value || 'backup-' + new Date().toISOString().split('T')[0];
+            
+            try {
+                await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, `frameworkGestaoSetores/${backupName}`), initialData);
+                alert(`Dados salvos com sucesso no Firebase como "${backupName}"!`);
+                document.getElementById('backup-name').value = '';
+                loadBackupList();
+            } catch (error) {
+                console.error('Erro ao salvar no Firebase:', error);
+                alert('Erro ao salvar dados no Firebase: ' + error.message);
+            }
+        }
+
+        // Carregar dados do Firebase
+        async function loadFromFirebase() {
+            if (!firebaseReady) {
+                alert('Firebase não está inicializado!');
+                return;
+            }
+            
+            try {
+                const snapshot = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'frameworkGestaoSetores'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    
+                    // Mostrar lista de backups disponíveis
+                    let backupList = '<p>Selecione um backup para carregar:</p><ul>';
+                    Object.keys(data).forEach(key => {
+                        backupList += `<li><button class="btn btn-form" onclick="loadSpecificBackup('${key}')">${key}</button></li>`;
+                    });
+                    backupList += '</ul>';
+                    
+                    document.getElementById('backup-list').innerHTML = backupList;
+                } else {
+                    document.getElementById('backup-list').innerHTML = '<p>Nenhum backup encontrado no Firebase.</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar do Firebase:', error);
+                alert('Erro ao carregar dados do Firebase: ' + error.message);
+            }
+        }
+
+        // Carregar backup específico
+        async function loadSpecificBackup(backupName) {
+            try {
+                const snapshot = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, `frameworkGestaoSetores/${backupName}`));
+                if (snapshot.exists()) {
+                    initialData = snapshot.val();
+                    updateData();
+                    alert(`Backup "${backupName}" carregado com sucesso!`);
+                } else {
+                    alert(`Backup "${backupName}" não encontrado!`);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar backup específico:', error);
+                alert('Erro ao carregar backup: ' + error.message);
+            }
+        }
+
+        // Limpar dados do Firebase
+        async function clearFirebase() {
+            if (!firebaseReady) {
+                alert('Firebase não está inicializado!');
+                return;
+            }
+            
+            if (!confirm('Tem certeza que deseja limpar todos os dados do Firebase? Esta ação não pode ser desfeita!')) {
+                return;
+            }
+            
+            try {
+                await window.firebaseSet(window.firebaseRef(window.firebaseDatabase, 'frameworkGestaoSetores'), null);
+                alert('Dados do Firebase limpos com sucesso!');
+                document.getElementById('backup-list').innerHTML = '<p>Nenhum backup encontrado no Firebase.</p>';
+            } catch (error) {
+                console.error('Erro ao limpar Firebase:', error);
+                alert('Erro ao limpar dados do Firebase: ' + error.message);
+            }
+        }
+
+        // Carregar lista de backups
+        async function loadBackupList() {
+            if (!firebaseReady) return;
+            
+            try {
+                const snapshot = await window.firebaseGet(window.firebaseRef(window.firebaseDatabase, 'frameworkGestaoSetores'));
+                if (snapshot.exists()) {
+                    const data = snapshot.val();
+                    let backupList = '<p>Backups disponíveis:</p><ul>';
+                    Object.keys(data).forEach(key => {
+                        backupList += `<li><button class="btn btn-form" onclick="loadSpecificBackup('${key}')">${key}</button></li>`;
+                    });
+                    backupList += '</ul>';
+                    
+                    document.getElementById('backup-list').innerHTML = backupList;
+                } else {
+                    document.getElementById('backup-list').innerHTML = '<p>Nenhum backup encontrado no Firebase.</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar lista de backups:', error);
+            }
+        }
+
+        // Verificar status do Firebase
+        function checkFirebaseStatus() {
+            const statusElement = document.getElementById('firebaseStatus');
+            
+            if (window.firebaseInitialized) {
+                statusElement.innerHTML = '<i class="fas fa-check-circle"></i> Firebase: Conectado';
+                statusElement.className = 'firebase-status status-connected';
+                firebaseReady = true;
+                
+                // Habilitar botões que dependem do Firebase
+                document.getElementById('openFormBtn').disabled = false;
+                document.getElementById('editTableBtn').disabled = false;
+                document.getElementById('manageDataBtn').disabled = false;
+                document.getElementById('firebaseActionsBtn').disabled = false;
+                
+                // Atualizar status no modal do Firebase
+                document.getElementById('connectionStatusText').textContent = 'Conectado com sucesso ao Firebase!';
+                
+                // Carregar lista de backups
+                loadBackupList();
+            } else {
+                statusElement.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Firebase: Não Conectado';
+                statusElement.className = 'firebase-status status-disconnected';
+                firebaseReady = false;
+                
+                document.getElementById('connectionStatusText').textContent = 'Não foi possível conectar ao Firebase. Verifique as credenciais.';
+            }
+        }
+
+        // Atualizar campos do formulário conforme o setor selecionado
+        function updateFormFields() {
+            const setor = document.getElementById('data-setor').value;
+            const container = document.getElementById('indicadores-container');
+            
+            if (!setor) {
+                container.innerHTML = '<p>Selecione um setor para ver os indicadores</p>';
+                return;
+            }
+            
+            let html = '<div class="form-grid">';
+            
+            dataStructure[setor].rows.forEach(row => {
+                html += `
+                    <div class="form-group">
+                        <label for="data-${row.key}">${row.label}:</label>
+                        <input type="text" id="data-${row.key}" placeholder="Digite o valor">
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Inicializar aplicação
+        function initializeApp() {
+            // Carregar dados iniciais
+            initialData = initializeDefaultData();
+            
+            // Configurar event listeners
+            document.getElementById('openFormBtn').addEventListener('click', () => {
+                document.getElementById('formModal').style.display = 'block';
+            });
+            
+            document.getElementById('editTableBtn').addEventListener('click', toggleEditMode);
+            
+            document.getElementById('manageDataBtn').addEventListener('click', () => {
+                document.getElementById('manageModal').style.display = 'block';
+            });
+            
+            document.getElementById('firebaseActionsBtn').addEventListener('click', () => {
+                document.getElementById('firebaseModal').style.display = 'block';
+            });
+            
+            // Fechar modais
+            document.querySelectorAll('.close').forEach(closeBtn => {
+                closeBtn.addEventListener('click', function() {
+                    this.closest('.modal').style.display = 'none';
+                });
+            });
+            
+            document.getElementById('closeFormBtn').addEventListener('click', () => {
+                document.getElementById('formModal').style.display = 'none';
+            });
+            
+            // Fechar modais ao clicar fora
+            window.addEventListener('click', function(event) {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    if (event.target === modal) {
+                        modal.style.display = 'none';
+                    }
+                });
+            });
+            
+            // Atualizar campos do formulário quando o setor mudar
+            document.getElementById('data-setor').addEventListener('change', updateFormFields);
+            
+            // Formulário de dados
+            document.getElementById('data-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const data = {
+                    data: document.getElementById('data-data').value,
+                    produto: document.getElementById('data-produto').value,
+                    setor: document.getElementById('data-setor').value
+                };
+                
+                // Coletar dados específicos do setor
+                dataStructure[data.setor].rows.forEach(row => {
+                    const value = document.getElementById(`data-${row.key}`).value;
+                    data[row.key] = value;
+                });
+                
+                // Validar dados
+                if (!data.data || !data.produto || !data.setor) {
+                    alert('Por favor, preencha todos os campos obrigatórios!');
+                    return;
+                }
+                
+                // Salvar dados
+                if (!initialData[data.produto][data.setor][data.data]) {
+                    initialData[data.produto][data.setor][data.data] = {};
+                }
+                
+                dataStructure[data.setor].rows.forEach(row => {
+                    let value = data[row.key];
+                    
+                    // Converter para número se necessário
+                    if (row.format === 'number' || row.format === 'percentage') {
+                        value = parseFloat(value.replace(',', '.'));
+                        if (isNaN(value)) value = 0;
+                    }
+                    
+                    initialData[data.produto][data.setor][data.data][row.key] = value;
+                });
+                
+                // Atualizar interface
+                updateData();
+                
+                // Fechar modal e limpar formulário
+                document.getElementById('formModal').style.display = 'none';
+                this.reset();
+                
+                alert('Dados salvos com sucesso!');
+            });
+            
+            // Gerenciamento de dados
+            document.getElementById('addDateBtn').addEventListener('click', addNewDate);
+            document.getElementById('deleteDateBtn').addEventListener('click', deleteDate);
+            
+            // Ações Firebase
+            document.getElementById('saveToFirebaseBtn').addEventListener('click', saveToFirebase);
+            document.getElementById('loadFromFirebaseBtn').addEventListener('click', loadFromFirebase);
+            document.getElementById('clearFirebaseBtn').addEventListener('click', clearFirebase);
+            
+            // Verificar status do Firebase quando estiver pronto
+            window.addEventListener('firebaseReady', checkFirebaseStatus);
+            
+            // Verificar status do Firebase após um tempo (fallback)
+            setTimeout(checkFirebaseStatus, 3000);
+            
+            // Renderizar interface inicial
+            renderTables();
+            updateCharts();
+            updateSummary();
+        }
+
+        // Inicializar quando o DOM estiver carregado
+        document.addEventListener('DOMContentLoaded', initializeApp);
+    </script>
+</body>
+</html>
