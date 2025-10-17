@@ -6,6 +6,44 @@
     <title>Framework Gestão 📊</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+        import { getDatabase, ref, set, get, update, remove, onValue, off } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDoMyEQ4XGpRalbq4midqher6yUEwPd80Y",
+            authDomain: "framework-gestao.firebaseapp.com",
+            databaseURL: "https://framework-gestao-default-rtdb.firebaseio.com",
+            projectId: "framework-gestao",
+            storageBucket: "framework-gestao.firebasestorage.app",
+            messagingSenderId: "131859838839",
+            appId: "1:131859838839:web:6f4b3f2e34fed360b99372",
+            measurementId: "G-DXT4DY8RS4"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+        
+        // Make Firebase available globally
+        window.firebase = {
+            database,
+            ref,
+            set,
+            get,
+            update,
+            remove,
+            onValue,
+            off
+        };
+        
+        console.log("Firebase inicializado com sucesso!");
+    </script>
+
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -632,6 +670,50 @@
             color: var(--accessorias-color);
         }
         
+        .firebase-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 1001;
+        }
+        
+        .firebase-online {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .firebase-offline {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .sync-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        .sync-online {
+            background-color: var(--success-color);
+        }
+        
+        .sync-offline {
+            background-color: var(--accent-color);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
         @media (max-width: 768px) {
             .dashboard {
                 grid-template-columns: 1fr;
@@ -697,6 +779,12 @@
     </style>
 </head>
 <body>
+    <!-- Indicador de Status do Firebase -->
+    <div id="firebaseStatus" class="firebase-status firebase-offline">
+        <span class="sync-indicator sync-offline"></span>
+        OFFLINE
+    </div>
+
     <header>
         <div class="logo-container">
             <img src="https://media.licdn.com/dms/image/v2/C4E0BAQFTF5ZkrxcxHg/company-logo_200_200/company-logo_200_200/0/1630622851487/setuptecnologia_logo?e=2147483647&v=beta&t=qxvmnoMPfoL2p5Lh2TgmK_KVvxXHOf32w4JRapFlbI0" class="logo" alt="Logo da Empresa">
@@ -712,6 +800,7 @@
             <button class="btn btn-form" id="openFormBtn">Lançar Dados</button>
             <button class="btn btn-edit" id="editTableBtn">Editar Tabela</button>
             <button class="btn btn-delete" id="manageDataBtn">Gerenciar Dados</button>
+            <button class="btn" id="syncBtn"><i class="fas fa-sync-alt"></i> Sincronizar</button>
         </div>
         
         <!-- Seletor de Mês -->
@@ -1170,6 +1259,8 @@
         let editMode = false;
         let currentEditingProduct = '';
         let currentEditingSector = '';
+        let isOnline = false;
+        let firebaseListener = null;
         
         // Estrutura de indicadores por setor
         const indicatorsStructure = {
@@ -1256,15 +1347,158 @@
         function initializeApp() {
             console.log("Aplicação inicializada com sucesso!");
             
+            // Verificar se Firebase está disponível
+            if (!window.firebase) {
+                console.error("Firebase não está disponível!");
+                showFirebaseStatus(false);
+                loadDataFromStorage(); // Fallback para localStorage
+            } else {
+                setupFirebaseConnection();
+            }
+            
             // Carregar dados iniciais
             loadMonths();
-            loadDataFromStorage();
             
             // Inicializar gráficos
             initializeCharts();
             
             // Adicionar event listeners
             setupEventListeners();
+        }
+        
+        function setupFirebaseConnection() {
+            const connectedRef = window.firebase.ref(window.firebase.database, '.info/connected');
+            
+            window.firebase.onValue(connectedRef, (snapshot) => {
+                const isConnected = snapshot.val() === true;
+                showFirebaseStatus(isConnected);
+                
+                if (isConnected) {
+                    console.log("Conectado ao Firebase!");
+                    setupRealtimeListener();
+                    syncDataWithFirebase();
+                } else {
+                    console.log("Desconectado do Firebase - usando dados locais");
+                    loadDataFromStorage();
+                }
+            });
+        }
+        
+        function setupRealtimeListener() {
+            // Remover listener anterior se existir
+            if (firebaseListener) {
+                window.firebase.off(firebaseListener);
+            }
+            
+            // Configurar listener em tempo real para o mês atual
+            const dataRef = window.firebase.ref(window.firebase.database, `frameworkGestao/${currentMonth}`);
+            
+            firebaseListener = window.firebase.onValue(dataRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const firebaseData = snapshot.val();
+                    console.log("Dados recebidos do Firebase:", firebaseData);
+                    
+                    // Mesclar dados do Firebase com dados locais
+                    currentData = { ...currentData, ...firebaseData };
+                    
+                    // Atualizar interface
+                    updateAllTables();
+                    updateDashboard();
+                    updateComparativo();
+                    updateCharts();
+                    
+                    // Salvar localmente como backup
+                    saveDataToStorage();
+                }
+            }, (error) => {
+                console.error("Erro no listener do Firebase:", error);
+                showFirebaseStatus(false);
+            });
+        }
+        
+        function showFirebaseStatus(connected) {
+            isOnline = connected;
+            const statusElement = document.getElementById('firebaseStatus');
+            
+            if (connected) {
+                statusElement.innerHTML = '<span class="sync-indicator sync-online"></span> ONLINE';
+                statusElement.className = 'firebase-status firebase-online';
+            } else {
+                statusElement.innerHTML = '<span class="sync-indicator sync-offline"></span> OFFLINE';
+                statusElement.className = 'firebase-status firebase-offline';
+            }
+        }
+        
+        async function saveDataToFirebase() {
+            if (!isOnline || !window.firebase) {
+                console.log("Firebase offline - salvando apenas localmente");
+                saveDataToStorage();
+                return false;
+            }
+            
+            try {
+                await window.firebase.set(
+                    window.firebase.ref(window.firebase.database, `frameworkGestao/${currentMonth}`),
+                    currentData
+                );
+                console.log("Dados salvos no Firebase com sucesso!");
+                return true;
+            } catch (error) {
+                console.error("Erro ao salvar no Firebase:", error);
+                // Fallback para localStorage
+                saveDataToStorage();
+                return false;
+            }
+        }
+        
+        async function loadDataFromFirebase() {
+            if (!isOnline || !window.firebase) {
+                console.log("Firebase offline - carregando dados locais");
+                loadDataFromStorage();
+                return;
+            }
+            
+            try {
+                const snapshot = await window.firebase.get(
+                    window.firebase.ref(window.firebase.database, `frameworkGestao/${currentMonth}`)
+                );
+                
+                if (snapshot.exists()) {
+                    currentData = snapshot.val();
+                    console.log("Dados carregados do Firebase:", currentData);
+                    
+                    // Salvar localmente como backup
+                    saveDataToStorage();
+                    
+                    return true;
+                } else {
+                    console.log("Nenhum dado encontrado no Firebase para este mês");
+                    loadDataFromStorage(); // Tentar carregar dados locais
+                    return false;
+                }
+            } catch (error) {
+                console.error("Erro ao carregar do Firebase:", error);
+                loadDataFromStorage(); // Fallback para localStorage
+                return false;
+            }
+        }
+        
+        async function syncDataWithFirebase() {
+            if (!isOnline || !window.firebase) return;
+            
+            try {
+                // Carregar dados do Firebase
+                const firebaseLoaded = await loadDataFromFirebase();
+                
+                if (!firebaseLoaded) {
+                    // Se não há dados no Firebase, enviar dados locais
+                    await saveDataToFirebase();
+                }
+                
+                console.log("Sincronização com Firebase concluída");
+            } catch (error) {
+                console.error("Erro na sincronização:", error);
+            }
         }
         
         function loadMonths() {
@@ -1307,6 +1541,14 @@
             
             // Gerar dias do mês selecionado
             generateMonthDays(monthKey);
+            
+            // Configurar listener em tempo real para o novo mês
+            if (isOnline && window.firebase) {
+                setupRealtimeListener();
+            } else {
+                // Carregar dados locais
+                loadDataFromStorage();
+            }
             
             // Atualizar tabelas
             updateAllTables();
@@ -1371,7 +1613,16 @@
             // Carregar dados do localStorage
             const savedData = localStorage.getItem('frameworkGestaoData');
             if (savedData) {
-                currentData = JSON.parse(savedData);
+                try {
+                    currentData = JSON.parse(savedData);
+                    console.log("Dados carregados do localStorage:", currentData);
+                } catch (e) {
+                    console.error("Erro ao carregar dados do localStorage:", e);
+                    currentData = {
+                        sittax: {},
+                        accessorias: {}
+                    };
+                }
             } else {
                 // Inicializar estrutura vazia
                 currentData = {
@@ -1382,7 +1633,12 @@
         }
         
         function saveDataToStorage() {
-            localStorage.setItem('frameworkGestaoData', JSON.stringify(currentData));
+            try {
+                localStorage.setItem('frameworkGestaoData', JSON.stringify(currentData));
+                console.log("Dados salvos no localStorage");
+            } catch (e) {
+                console.error("Erro ao salvar no localStorage:", e);
+            }
         }
         
         function generateIndicatorsForm(product, sector) {
@@ -1535,6 +1791,11 @@
             document.getElementById('manageDataBtn').addEventListener('click', function() {
                 document.getElementById('manageDataModal').style.display = 'block';
                 loadManageDataTable();
+            });
+            
+            document.getElementById('syncBtn').addEventListener('click', function() {
+                syncDataWithFirebase();
+                alert('Sincronização iniciada!');
             });
             
             document.getElementById('addMonthBtn').addEventListener('click', function() {
@@ -1724,7 +1985,7 @@
             updateAllTables();
         }
         
-        function submitData() {
+        async function submitData() {
             const product = document.getElementById('productSelect').value;
             const sector = document.getElementById('sectorSelect').value;
             const date = document.getElementById('dateInput').value;
@@ -1750,10 +2011,15 @@
             if (!currentData[product][sector]) currentData[product][sector] = {};
             currentData[product][sector][date] = data;
             
-            // Salvar no localStorage
-            saveDataToStorage();
+            // Salvar no Firebase (e localStorage como fallback)
+            const savedToFirebase = await saveDataToFirebase();
             
-            alert('Dados salvos com sucesso!');
+            if (savedToFirebase) {
+                alert('Dados salvos com sucesso no Firebase!');
+            } else {
+                alert('Dados salvos localmente (Firebase offline). Serão sincronizados quando a conexão voltar.');
+            }
+            
             document.getElementById('dataFormModal').style.display = 'none';
             
             // Atualizar a interface
@@ -1836,10 +2102,13 @@
             document.getElementById('dataFormModal').style.display = 'block';
         }
         
-        function deleteData(product, sector, date) {
+        async function deleteData(product, sector, date) {
             if (confirm(`Tem certeza que deseja excluir os dados de ${date} para ${product} - ${sector}?`)) {
                 delete currentData[product][sector][date];
-                saveDataToStorage();
+                
+                // Salvar no Firebase (e localStorage como fallback)
+                await saveDataToFirebase();
+                
                 loadManageDataTable();
                 updateAllTables();
                 updateDashboard();
@@ -1973,7 +2242,7 @@
             });
         }
         
-        function deleteDateColumn(product, sector, date) {
+        async function deleteDateColumn(product, sector, date) {
             if (!editMode) return;
             
             if (confirm(`Tem certeza que deseja excluir permanentemente a data ${date}?\n\nEsta ação não pode ser desfeita e removerá a data de todas as visualizações deste mês.`)) {
@@ -2000,7 +2269,7 @@
                 }
                 
                 // Salvar dados
-                saveDataToStorage();
+                await saveDataToFirebase();
                 
                 // Atualizar tabela
                 updateTable(product, sector);
@@ -2009,7 +2278,7 @@
             }
         }
         
-        function restoreAllDates(product) {
+        async function restoreAllDates(product) {
             if (!editMode) return;
             
             if (confirm(`Tem certeza que deseja restaurar TODAS as datas excluídas para o mês ${currentMonth}?\n\nIsso fará com que todas as datas do mês sejam exibidas novamente.`)) {
@@ -2073,7 +2342,7 @@
             }
         }
         
-        function editIndicatorName(cell, product, sector, oldName) {
+        async function editIndicatorName(cell, product, sector, oldName) {
             if (!editMode) return;
             
             const input = document.createElement('input');
@@ -2085,7 +2354,7 @@
             cell.appendChild(input);
             input.focus();
             
-            const saveIndicatorName = () => {
+            const saveIndicatorName = async () => {
                 const newName = input.value.trim();
                 
                 if (newName && newName !== oldName) {
@@ -2129,7 +2398,7 @@
                     }
                     
                     // Salvar dados
-                    saveDataToStorage();
+                    await saveDataToFirebase();
                 } else {
                     // Restaurar nome original
                     cell.textContent = oldName;
@@ -2158,7 +2427,7 @@
             });
         }
         
-        function editCell(cell, product, sector, date, indicator, type) {
+        async function editCell(cell, product, sector, date, indicator, type) {
             if (!editMode) return;
             
             const currentValue = cell.textContent === '-' ? '' : cell.textContent;
@@ -2177,7 +2446,7 @@
             cell.appendChild(input);
             input.focus();
             
-            const saveValue = () => {
+            const saveValue = async () => {
                 let newValue = input.value;
                 
                 if (newValue !== '') {
@@ -2209,7 +2478,7 @@
                 }
                 
                 // Salvar dados
-                saveDataToStorage();
+                await saveDataToFirebase();
                 
                 // Atualizar dashboard e gráficos
                 updateDashboard();
@@ -2259,7 +2528,7 @@
             }
         }
         
-        function deleteIndicator(product, sector, indicatorName) {
+        async function deleteIndicator(product, sector, indicatorName) {
             if (confirm(`Tem certeza que deseja excluir o indicador "${indicatorName}"?`)) {
                 // Remover o indicador da estrutura
                 const indicatorIndex = indicatorsStructure[product][sector].findIndex(ind => ind.name === indicatorName);
@@ -2276,6 +2545,9 @@
                 
                 // Salvar estrutura de indicadores
                 localStorage.setItem('frameworkGestaoIndicators', JSON.stringify(indicatorsStructure));
+                
+                // Salvar dados
+                await saveDataToFirebase();
                 
                 // Atualizar tabela
                 updateTable(product, sector);
