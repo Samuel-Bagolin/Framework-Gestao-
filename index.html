@@ -866,6 +866,7 @@
                     <h3>Total de Clientes</h3>
                     <div class="summary-value" id="totalClientes">0</div>
                     <p id="clientesPorProduto">Sittax: 0 | Acessorias: 0</p>
+                    <p id="clientesVariacao">Variação: 0</p>
                 </div>
                 <div class="summary-item">
                     <h3>CSAT Geral</h3>
@@ -2693,7 +2694,7 @@
             });
         }
         
-        async function editCell(cell, product, sector, date, indicator, type) {
+        async function editCell(cell, product, sector, day, indicator, type) {
             if (!editMode) return;
             
             const currentValue = cell.textContent === '-' ? '' : cell.textContent;
@@ -2721,10 +2722,10 @@
                     // Garantir que a estrutura de dados exista
                     if (!currentData[product]) currentData[product] = {};
                     if (!currentData[product][sector]) currentData[product][sector] = {};
-                    if (!currentData[product][sector][date]) currentData[product][sector][date] = {};
+                    if (!currentData[product][sector][day]) currentData[product][sector][day] = {};
                     
                     // Salvar o valor
-                    currentData[product][sector][date][indicator] = newValue;
+                    currentData[product][sector][day][indicator] = newValue;
                     
                     // Atualizar célula
                     cell.textContent = newValue;
@@ -2732,12 +2733,12 @@
                     // Se o valor estiver vazio, remover o dado
                     if (currentData[product] && 
                         currentData[product][sector] && 
-                        currentData[product][sector][date]) {
-                        delete currentData[product][sector][date][indicator];
+                        currentData[product][sector][day]) {
+                        delete currentData[product][sector][day][indicator];
                         
                         // Se não houver mais indicadores para esta data, remover a data
-                        if (Object.keys(currentData[product][sector][date]).length === 0) {
-                            delete currentData[product][sector][date];
+                        if (Object.keys(currentData[product][sector][day]).length === 0) {
+                            delete currentData[product][sector][day];
                         }
                     }
                     cell.textContent = '-';
@@ -2825,9 +2826,13 @@
         }
         
         function updateDashboard() {
-            // Calcular totais apenas para o mês atual
+            // NOVA LÓGICA CORRIGIDA: Calcular média geral de clientes ativos
+            let totalClientes = 0;
+            let countDias = 0;
             let totalClientesSittax = 0;
             let totalClientesAccessorias = 0;
+            let countDiasSittax = 0;
+            let countDiasAccessorias = 0;
             let totalCsatSittax = 0;
             let totalCsatAccessorias = 0;
             let totalCancelamentosSittax = 0;
@@ -2840,9 +2845,18 @@
                 for (const date in currentData.sittax[sector]) {
                     const data = currentData.sittax[sector][date];
                     
-                    // Clientes
-                    if (data['Quantidades de Clientes'] !== undefined) {
+                    // Clientes - Somar Onboarding e Ongoing para cada dia
+                    if (sector === 'onboarding' && data['Quantidades de Clientes (dia)'] !== undefined) {
+                        totalClientes += data['Quantidades de Clientes (dia)'];
+                        totalClientesSittax += data['Quantidades de Clientes (dia)'];
+                        countDias++;
+                        countDiasSittax++;
+                    }
+                    if (sector === 'ongoing' && data['Quantidades de Clientes'] !== undefined) {
+                        totalClientes += data['Quantidades de Clientes'];
                         totalClientesSittax += data['Quantidades de Clientes'];
+                        countDias++;
+                        countDiasSittax++;
                     }
                     
                     // CSAT
@@ -2863,9 +2877,18 @@
                 for (const date in currentData.accessorias[sector]) {
                     const data = currentData.accessorias[sector][date];
                     
-                    // Clientes
-                    if (data['Quantidades de Clientes'] !== undefined) {
+                    // Clientes - Somar Onboarding e Ongoing para cada dia
+                    if (sector === 'onboarding' && data['Quantidades de Clientes (dia)'] !== undefined) {
+                        totalClientes += data['Quantidades de Clientes (dia)'];
+                        totalClientesAccessorias += data['Quantidades de Clientes (dia)'];
+                        countDias++;
+                        countDiasAccessorias++;
+                    }
+                    if (sector === 'ongoing' && data['Quantidades de Clientes'] !== undefined) {
+                        totalClientes += data['Quantidades de Clientes'];
                         totalClientesAccessorias += data['Quantidades de Clientes'];
+                        countDias++;
+                        countDiasAccessorias++;
                     }
                     
                     // CSAT
@@ -2881,9 +2904,29 @@
                 }
             }
             
+            // Calcular médias corretas
+            const mediaClientesGeral = countDias > 0 ? totalClientes / countDias : 0;
+            const mediaClientesSittax = countDiasSittax > 0 ? totalClientesSittax / countDiasSittax : 0;
+            const mediaClientesAccessorias = countDiasAccessorias > 0 ? totalClientesAccessorias / countDiasAccessorias : 0;
+            
+            // Calcular variação de clientes (últimos 2 dias)
+            const variacaoClientes = calcularVariacaoClientes();
+            
             // Atualizar elementos do dashboard
-            document.getElementById('totalClientes').textContent = totalClientesSittax + totalClientesAccessorias;
-            document.getElementById('clientesPorProduto').textContent = `Sittax: ${totalClientesSittax} | Acessorias: ${totalClientesAccessorias}`;
+            document.getElementById('totalClientes').textContent = Math.round(mediaClientesGeral);
+            document.getElementById('clientesPorProduto').textContent = `Sittax: ${Math.round(mediaClientesSittax)} | Acessorias: ${Math.round(mediaClientesAccessorias)}`;
+            
+            // Adicionar informação de variação
+            const variacaoElement = document.getElementById('clientesVariacao');
+            if (variacaoClientes !== null) {
+                const variacaoTexto = variacaoClientes > 0 ? 
+                    `+${variacaoClientes} (último dia)` : 
+                    `${variacaoClientes} (último dia)`;
+                variacaoElement.textContent = `Variação: ${variacaoTexto}`;
+                variacaoElement.className = variacaoClientes >= 0 ? 'positive' : 'negative';
+            } else {
+                variacaoElement.textContent = 'Variação: N/A';
+            }
             
             const avgCsatSittax = countCsatSittax > 0 ? totalCsatSittax / countCsatSittax : 0;
             const avgCsatAccessorias = countCsatAccessorias > 0 ? totalCsatAccessorias / countCsatAccessorias : 0;
@@ -2891,6 +2934,77 @@
             
             document.getElementById('csatGeral').textContent = avgCsatGeral.toFixed(1) + '%';
             document.getElementById('totalCancelamentos').textContent = totalCancelamentosSittax + totalCancelamentosAccessorias;
+        }
+        
+        function calcularVariacaoClientes() {
+            // Obter os últimos 2 dias com dados
+            const datasOrdenadas = [];
+            
+            // Coletar todas as datas com dados
+            for (const product in currentData) {
+                for (const sector in currentData[product]) {
+                    for (const date in currentData[product][sector]) {
+                        if (!datasOrdenadas.includes(date)) {
+                            datasOrdenadas.push(date);
+                        }
+                    }
+                }
+            }
+            
+            // Ordenar datas
+            datasOrdenadas.sort((a, b) => new Date(a) - new Date(b));
+            
+            // Pegar as últimas 2 datas
+            const ultimasDatas = datasOrdenadas.slice(-2);
+            
+            if (ultimasDatas.length < 2) {
+                return null; // Não há dados suficientes
+            }
+            
+            const [penultimaData, ultimaData] = ultimasDatas;
+            
+            // Calcular total de clientes para cada data (Onboarding + Ongoing)
+            let clientesPenultimaData = 0;
+            let clientesUltimaData = 0;
+            
+            // Calcular para penúltima data
+            for (const product in currentData) {
+                // Onboarding
+                if (currentData[product].onboarding && currentData[product].onboarding[penultimaData]) {
+                    const data = currentData[product].onboarding[penultimaData];
+                    if (data['Quantidades de Clientes (dia)'] !== undefined) {
+                        clientesPenultimaData += data['Quantidades de Clientes (dia)'];
+                    }
+                }
+                // Ongoing
+                if (currentData[product].ongoing && currentData[product].ongoing[penultimaData]) {
+                    const data = currentData[product].ongoing[penultimaData];
+                    if (data['Quantidades de Clientes'] !== undefined) {
+                        clientesPenultimaData += data['Quantidades de Clientes'];
+                    }
+                }
+            }
+            
+            // Calcular para última data
+            for (const product in currentData) {
+                // Onboarding
+                if (currentData[product].onboarding && currentData[product].onboarding[ultimaData]) {
+                    const data = currentData[product].onboarding[ultimaData];
+                    if (data['Quantidades de Clientes (dia)'] !== undefined) {
+                        clientesUltimaData += data['Quantidades de Clientes (dia)'];
+                    }
+                }
+                // Ongoing
+                if (currentData[product].ongoing && currentData[product].ongoing[ultimaData]) {
+                    const data = currentData[product].ongoing[ultimaData];
+                    if (data['Quantidades de Clientes'] !== undefined) {
+                        clientesUltimaData += data['Quantidades de Clientes'];
+                    }
+                }
+            }
+            
+            // Retornar a variação
+            return clientesUltimaData - clientesPenultimaData;
         }
         
         function updateComparativo() {
@@ -3012,18 +3126,20 @@
                     let sittaxClientes = 0;
                     let accessoriasClientes = 0;
                     
-                    // Sittax
-                    for (const sector in currentData.sittax) {
-                        if (currentData.sittax[sector][day] && currentData.sittax[sector][day]['Quantidades de Clientes'] !== undefined) {
-                            sittaxClientes += currentData.sittax[sector][day]['Quantidades de Clientes'];
-                        }
+                    // Sittax - Somar Onboarding e Ongoing
+                    if (currentData.sittax && currentData.sittax.onboarding && currentData.sittax.onboarding[day]) {
+                        sittaxClientes += currentData.sittax.onboarding[day]['Quantidades de Clientes (dia)'] || 0;
+                    }
+                    if (currentData.sittax && currentData.sittax.ongoing && currentData.sittax.ongoing[day]) {
+                        sittaxClientes += currentData.sittax.ongoing[day]['Quantidades de Clientes'] || 0;
                     }
                     
-                    // Acessorias
-                    for (const sector in currentData.accessorias) {
-                        if (currentData.accessorias[sector][day] && currentData.accessorias[sector][day]['Quantidades de Clientes'] !== undefined) {
-                            accessoriasClientes += currentData.accessorias[sector][day]['Quantidades de Clientes'];
-                        }
+                    // Acessorias - Somar Onboarding e Ongoing
+                    if (currentData.accessorias && currentData.accessorias.onboarding && currentData.accessorias.onboarding[day]) {
+                        accessoriasClientes += currentData.accessorias.onboarding[day]['Quantidades de Clientes (dia)'] || 0;
+                    }
+                    if (currentData.accessorias && currentData.accessorias.ongoing && currentData.accessorias.ongoing[day]) {
+                        accessoriasClientes += currentData.accessorias.ongoing[day]['Quantidades de Clientes'] || 0;
                     }
                     
                     sittaxData.push(sittaxClientes);
