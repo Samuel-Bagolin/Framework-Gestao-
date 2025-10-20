@@ -1551,6 +1551,9 @@
                 }
                 
                 console.log("Sincronização com Firebase concluída");
+                
+                // Atualizar gráficos após sincronização
+                updateCharts();
                 updateMonthInfo();
             } catch (error) {
                 console.error("Erro na sincronização:", error);
@@ -1723,6 +1726,37 @@
             const excludedDatesData = JSON.parse(localStorage.getItem('frameworkGestaoExcludedDates') || '{}');
             excludedDatesData[monthKey] = excludedDates;
             localStorage.setItem('frameworkGestaoExcludedDates', JSON.stringify(excludedDatesData));
+            
+            // Salvar também no Firebase para sincronização entre usuários
+            if (isOnline && window.firebase) {
+                try {
+                    window.firebase.set(
+                        window.firebase.ref(window.firebase.database, `frameworkGestaoExcludedDates/${monthKey}`),
+                        excludedDates
+                    );
+                } catch (error) {
+                    console.error("Erro ao salvar datas excluídas no Firebase:", error);
+                }
+            }
+        }
+        
+        // Nova função para carregar datas excluídas do Firebase
+        async function loadExcludedDatesFromFirebase(monthKey) {
+            if (!isOnline || !window.firebase) return [];
+            
+            try {
+                const snapshot = await window.firebase.get(
+                    window.firebase.ref(window.firebase.database, `frameworkGestaoExcludedDates/${monthKey}`)
+                );
+                
+                if (snapshot.exists()) {
+                    return snapshot.val();
+                }
+                return [];
+            } catch (error) {
+                console.error("Erro ao carregar datas excluídas do Firebase:", error);
+                return [];
+            }
         }
         
         function loadDataFromStorage() {
@@ -1805,24 +1839,27 @@
             const ctx2 = document.getElementById('csatChart').getContext('2d');
             const ctx3 = document.getElementById('cancelamentosChart').getContext('2d');
             
+            // Inicializar gráficos vazios
             charts.clientesChart = new Chart(ctx1, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'],
+                    labels: [],
                     datasets: [
                         {
                             label: 'Sittax',
-                            data: [120, 150, 180, 200, 220, 240],
+                            data: [],
                             borderColor: '#3498db',
                             backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                            tension: 0.3
+                            tension: 0.3,
+                            fill: true
                         },
                         {
                             label: 'Acessorias',
-                            data: [80, 100, 130, 150, 170, 190],
+                            data: [],
                             borderColor: '#e74c3c',
                             backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                            tension: 0.3
+                            tension: 0.3,
+                            fill: true
                         }
                     ]
                 },
@@ -1850,12 +1887,12 @@
                     datasets: [
                         {
                             label: 'Sittax',
-                            data: [85, 90, 88, 82, 75],
+                            data: [0, 0, 0, 0, 0],
                             backgroundColor: 'rgba(52, 152, 219, 0.7)'
                         },
                         {
                             label: 'Acessorias',
-                            data: [78, 85, 80, 79, 70],
+                            data: [0, 0, 0, 0, 0],
                             backgroundColor: 'rgba(231, 76, 60, 0.7)'
                         }
                     ]
@@ -1883,7 +1920,7 @@
                 data: {
                     labels: ['Sittax', 'Acessorias'],
                     datasets: [{
-                        data: [15, 25],
+                        data: [0, 0],
                         backgroundColor: [
                             'rgba(52, 152, 219, 0.7)',
                             'rgba(231, 76, 60, 0.7)'
@@ -2024,6 +2061,11 @@
                         await window.firebase.remove(
                             window.firebase.ref(window.firebase.database, `frameworkGestao/${currentMonth}`)
                         );
+                        
+                        // Remover também as datas excluídas do Firebase
+                        await window.firebase.remove(
+                            window.firebase.ref(window.firebase.database, `frameworkGestaoExcludedDates/${currentMonth}`)
+                        );
                     }
                     
                     // Remover dados do localStorage
@@ -2033,6 +2075,11 @@
                         delete allData[currentMonth];
                         localStorage.setItem('frameworkGestaoData', JSON.stringify(allData));
                     }
+                    
+                    // Remover datas excluídas do localStorage
+                    const excludedDatesData = JSON.parse(localStorage.getItem('frameworkGestaoExcludedDates') || '{}');
+                    delete excludedDatesData[currentMonth];
+                    localStorage.setItem('frameworkGestaoExcludedDates', JSON.stringify(excludedDatesData));
                     
                     // Remover mês da lista de meses disponíveis
                     availableMonths = availableMonths.filter(m => m.key !== currentMonth);
@@ -2938,9 +2985,129 @@
         }
         
         function updateCharts() {
-            // Esta função atualizaria os gráficos com os dados reais
-            // Por enquanto, vamos manter os gráficos de exemplo
-            console.log('Atualizando gráficos com dados reais...');
+            // Atualizar gráfico de evolução de clientes
+            updateClientesChart();
+            
+            // Atualizar gráfico de CSAT por setor
+            updateCsatChart();
+            
+            // Atualizar gráfico de cancelamentos
+            updateCancelamentosChart();
+        }
+        
+        function updateClientesChart() {
+            if (!charts.clientesChart) return;
+            
+            // Obter dados do mês atual
+            const labels = [];
+            const sittaxData = [];
+            const accessoriasData = [];
+            
+            // Coletar dados por dia
+            if (window.currentMonthDays) {
+                window.currentMonthDays.forEach(day => {
+                    const dayLabel = new Date(day).getDate();
+                    labels.push(dayLabel.toString());
+                    
+                    let sittaxClientes = 0;
+                    let accessoriasClientes = 0;
+                    
+                    // Sittax
+                    for (const sector in currentData.sittax) {
+                        if (currentData.sittax[sector][day] && currentData.sittax[sector][day]['Quantidades de Clientes'] !== undefined) {
+                            sittaxClientes += currentData.sittax[sector][day]['Quantidades de Clientes'];
+                        }
+                    }
+                    
+                    // Acessorias
+                    for (const sector in currentData.accessorias) {
+                        if (currentData.accessorias[sector][day] && currentData.accessorias[sector][day]['Quantidades de Clientes'] !== undefined) {
+                            accessoriasClientes += currentData.accessorias[sector][day]['Quantidades de Clientes'];
+                        }
+                    }
+                    
+                    sittaxData.push(sittaxClientes);
+                    accessoriasData.push(accessoriasClientes);
+                });
+            }
+            
+            // Atualizar gráfico
+            charts.clientesChart.data.labels = labels;
+            charts.clientesChart.data.datasets[0].data = sittaxData;
+            charts.clientesChart.data.datasets[1].data = accessoriasData;
+            charts.clientesChart.update();
+        }
+        
+        function updateCsatChart() {
+            if (!charts.csatChart) return;
+            
+            const sectors = ['agendamento', 'suporte', 'onboarding', 'ongoing', 'retencao'];
+            const sittaxData = [];
+            const accessoriasData = [];
+            
+            // Calcular CSAT médio por setor
+            sectors.forEach(sector => {
+                let sittaxSum = 0;
+                let sittaxCount = 0;
+                let accessoriasSum = 0;
+                let accessoriasCount = 0;
+                
+                // Sittax
+                if (currentData.sittax && currentData.sittax[sector]) {
+                    for (const date in currentData.sittax[sector]) {
+                        if (currentData.sittax[sector][date]['CSAT'] !== undefined) {
+                            sittaxSum += currentData.sittax[sector][date]['CSAT'];
+                            sittaxCount++;
+                        }
+                    }
+                }
+                
+                // Acessorias
+                if (currentData.accessorias && currentData.accessorias[sector]) {
+                    for (const date in currentData.accessorias[sector]) {
+                        if (currentData.accessorias[sector][date]['CSAT'] !== undefined) {
+                            accessoriasSum += currentData.accessorias[sector][date]['CSAT'];
+                            accessoriasCount++;
+                        }
+                    }
+                }
+                
+                sittaxData.push(sittaxCount > 0 ? sittaxSum / sittaxCount : 0);
+                accessoriasData.push(accessoriasCount > 0 ? accessoriasSum / accessoriasCount : 0);
+            });
+            
+            // Atualizar gráfico
+            charts.csatChart.data.datasets[0].data = sittaxData;
+            charts.csatChart.data.datasets[1].data = accessoriasData;
+            charts.csatChart.update();
+        }
+        
+        function updateCancelamentosChart() {
+            if (!charts.cancelamentosChart) return;
+            
+            let sittaxCancelamentos = 0;
+            let accessoriasCancelamentos = 0;
+            
+            // Calcular cancelamentos totais
+            for (const sector in currentData.sittax) {
+                for (const date in currentData.sittax[sector]) {
+                    if (currentData.sittax[sector][date]['Cancelamentos'] !== undefined) {
+                        sittaxCancelamentos += currentData.sittax[sector][date]['Cancelamentos'];
+                    }
+                }
+            }
+            
+            for (const sector in currentData.accessorias) {
+                for (const date in currentData.accessorias[sector]) {
+                    if (currentData.accessorias[sector][date]['Cancelamentos'] !== undefined) {
+                        accessoriasCancelamentos += currentData.accessorias[sector][date]['Cancelamentos'];
+                    }
+                }
+            }
+            
+            // Atualizar gráfico
+            charts.cancelamentosChart.data.datasets[0].data = [sittaxCancelamentos, accessoriasCancelamentos];
+            charts.cancelamentosChart.update();
         }
     </script>
 </body>
