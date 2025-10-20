@@ -45,7 +45,6 @@
     </script>
 
     <style>
-        /* O CSS permanece exatamente igual */
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
@@ -1690,6 +1689,8 @@
             // Obter o número de dias no mês - CORREÇÃO: mês começa em 0 no JS
             const daysInMonth = new Date(year, month, 0).getDate();
             
+            console.log(`Gerando dias para ${monthKey}: ${daysInMonth} dias`);
+            
             // Gerar array com todos os dias do mês
             const days = [];
             for (let day = 1; day <= daysInMonth; day++) {
@@ -1699,6 +1700,8 @@
             
             // Armazenar os dias do mês
             window.currentMonthDays = days;
+            
+            console.log(`Dias gerados para ${monthKey}:`, days);
             
             // Filtrar dias excluídos para este mês
             filterExcludedDates(monthKey);
@@ -2826,72 +2829,53 @@
         }
         
         function updateDashboard() {
-            // Calcular totais apenas para o mês atual
+            // CORREÇÃO: Somar onboarding + ongoing para cada produto na data mais recente
             let totalClientesSittax = 0;
             let totalClientesAccessorias = 0;
-            let totalCsatSittax = 0;
-            let totalCsatAccessorias = 0;
             let totalCancelamentosSittax = 0;
             let totalCancelamentosAccessorias = 0;
-            let countCsatSittax = 0;
-            let countCsatAccessorias = 0;
             
-            // Calcular para Sittax
-            for (const sector in currentData.sittax) {
-                for (const date in currentData.sittax[sector]) {
-                    const data = currentData.sittax[sector][date];
-                    
-                    // Clientes - CORREÇÃO: usar o último valor, não somar todos
-                    if (data['Quantidades de Clientes'] !== undefined) {
-                        // Usar o último valor em vez de somar
-                        totalClientesSittax = data['Quantidades de Clientes'];
-                    }
-                    
-                    // CSAT - CORREÇÃO: usar o último valor
-                    if (data['CSAT'] !== undefined) {
-                        totalCsatSittax = data['CSAT'];
-                        countCsatSittax = 1;
-                    }
-                    
-                    // Cancelamentos - CORREÇÃO: usar o último valor
-                    if (data['Cancelamentos'] !== undefined) {
-                        totalCancelamentosSittax = data['Cancelamentos'];
-                    }
-                }
-            }
+            // Para Sittax: encontrar a data mais recente e somar onboarding + ongoing
+            const sittaxOnboarding = getLastValue('sittax', 'onboarding', 'Quantidades de Clientes');
+            const sittaxOngoing = getLastValue('sittax', 'ongoing', 'Quantidades de Clientes');
+            totalClientesSittax = sittaxOnboarding + sittaxOngoing;
             
-            // Calcular para Acessorias
-            for (const sector in currentData.accessorias) {
-                for (const date in currentData.accessorias[sector]) {
-                    const data = currentData.accessorias[sector][date];
-                    
-                    // Clientes - CORREÇÃO: usar o último valor, não somar todos
-                    if (data['Quantidades de Clientes'] !== undefined) {
-                        totalClientesAccessorias = data['Quantidades de Clientes'];
-                    }
-                    
-                    // CSAT - CORREÇÃO: usar o último valor
-                    if (data['CSAT'] !== undefined) {
-                        totalCsatAccessorias = data['CSAT'];
-                        countCsatAccessorias = 1;
-                    }
-                    
-                    // Cancelamentos - CORREÇÃO: usar o último valor
-                    if (data['Cancelamentos'] !== undefined) {
-                        totalCancelamentosAccessorias = data['Cancelamentos'];
-                    }
-                }
-            }
+            const sittaxCancelamentosOnboarding = getLastValue('sittax', 'onboarding', 'Cancelamentos');
+            const sittaxCancelamentosOngoing = getLastValue('sittax', 'ongoing', 'Cancelamentos');
+            totalCancelamentosSittax = sittaxCancelamentosOnboarding + sittaxCancelamentosOngoing;
+            
+            // Para Acessorias: encontrar a data mais recente e somar onboarding + ongoing
+            const accessoriasOnboarding = getLastValue('accessorias', 'onboarding', 'Quantidades de Clientes');
+            const accessoriasOngoing = getLastValue('accessorias', 'ongoing', 'Quantidades de Clientes');
+            totalClientesAccessorias = accessoriasOnboarding + accessoriasOngoing;
+            
+            const accessoriasCancelamentosOnboarding = getLastValue('accessorias', 'onboarding', 'Cancelamentos');
+            const accessoriasCancelamentosOngoing = getLastValue('accessorias', 'ongoing', 'Cancelamentos');
+            totalCancelamentosAccessorias = accessoriasCancelamentosOnboarding + accessoriasCancelamentosOngoing;
             
             // Atualizar elementos do dashboard
             document.getElementById('totalClientes').textContent = totalClientesSittax + totalClientesAccessorias;
             document.getElementById('clientesPorProduto').textContent = `Sittax: ${totalClientesSittax} | Acessorias: ${totalClientesAccessorias}`;
             
-            // CORREÇÃO: CSAT Geral deve ser a média entre os setores, não entre datas
+            // CSAT Geral
             const avgCsatGeral = calculateCsatGeral();
-            
             document.getElementById('csatGeral').textContent = avgCsatGeral.toFixed(1) + '%';
+            
             document.getElementById('totalCancelamentos').textContent = totalCancelamentosSittax + totalCancelamentosAccessorias;
+        }
+        
+        // NOVA FUNÇÃO: Obter o último valor de um indicador específico
+        function getLastValue(product, sector, indicatorName) {
+            if (currentData[product] && currentData[product][sector]) {
+                const dates = Object.keys(currentData[product][sector]).sort();
+                if (dates.length > 0) {
+                    const lastDate = dates[dates.length - 1];
+                    if (currentData[product][sector][lastDate][indicatorName] !== undefined) {
+                        return currentData[product][sector][lastDate][indicatorName];
+                    }
+                }
+            }
+            return 0;
         }
         
         // NOVA FUNÇÃO: Calcular CSAT Geral corretamente
@@ -2903,24 +2887,9 @@
             for (const product in currentData) {
                 // Para cada setor
                 for (const sector in currentData[product]) {
-                    let setorCsat = 0;
-                    let setorCount = 0;
-                    
-                    // Encontrar o último CSAT para este setor
-                    const dates = Object.keys(currentData[product][sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        const data = currentData[product][sector][lastDate];
-                        
-                        if (data['CSAT'] !== undefined) {
-                            setorCsat = data['CSAT'];
-                            setorCount = 1;
-                        }
-                    }
-                    
-                    // Se encontramos CSAT para este setor, adicionar à média geral
-                    if (setorCount > 0) {
-                        totalCsat += setorCsat;
+                    const csatValue = getLastValue(product, sector, 'CSAT');
+                    if (csatValue > 0) {
+                        totalCsat += csatValue;
                         countCsat++;
                     }
                 }
@@ -2965,20 +2934,9 @@
                 const value = document.createElement('div');
                 value.className = 'comparison-value sittax';
                 
-                // CORREÇÃO: Usar o último valor em vez da média
-                let lastValue = '-';
-                
-                if (currentData.sittax && currentData.sittax[sector]) {
-                    const dates = Object.keys(currentData.sittax[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.sittax[sector][lastDate][indicator.name] !== undefined) {
-                            lastValue = currentData.sittax[sector][lastDate][indicator.name];
-                        }
-                    }
-                }
-                
-                value.textContent = lastValue;
+                // Usar o último valor
+                const lastValue = getLastValue('sittax', sector, indicator.name);
+                value.textContent = lastValue > 0 ? lastValue : '-';
                 
                 comparisonItem.appendChild(label);
                 comparisonItem.appendChild(value);
@@ -2997,20 +2955,9 @@
                 const value = document.createElement('div');
                 value.className = 'comparison-value accessorias';
                 
-                // CORREÇÃO: Usar o último valor em vez da média
-                let lastValue = '-';
-                
-                if (currentData.accessorias && currentData.accessorias[sector]) {
-                    const dates = Object.keys(currentData.accessorias[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.accessorias[sector][lastDate][indicator.name] !== undefined) {
-                            lastValue = currentData.accessorias[sector][lastDate][indicator.name];
-                        }
-                    }
-                }
-                
-                value.textContent = lastValue;
+                // Usar o último valor
+                const lastValue = getLastValue('accessorias', sector, indicator.name);
+                value.textContent = lastValue > 0 ? lastValue : '-';
                 
                 comparisonItem.appendChild(label);
                 comparisonItem.appendChild(value);
@@ -3032,43 +2979,29 @@
         function updateClientesChart() {
             if (!charts.clientesChart) return;
             
-            // Obter dados do mês atual
+            // CORREÇÃO: Mostrar evolução por dia do mês selecionado, somando onboarding + ongoing
             const labels = [];
             const sittaxData = [];
             const accessoriasData = [];
             
-            // CORREÇÃO: Mostrar apenas os últimos valores, não a evolução
             if (window.currentMonthDays) {
-                // Encontrar a última data com dados para cada produto
-                let lastSittaxValue = 0;
-                let lastAccessoriasValue = 0;
-                
-                // Para Sittax
-                for (const sector in currentData.sittax) {
-                    const dates = Object.keys(currentData.sittax[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.sittax[sector][lastDate]['Quantidades de Clientes'] !== undefined) {
-                            lastSittaxValue = currentData.sittax[sector][lastDate]['Quantidades de Clientes'];
-                        }
-                    }
-                }
-                
-                // Para Acessorias
-                for (const sector in currentData.accessorias) {
-                    const dates = Object.keys(currentData.accessorias[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.accessorias[sector][lastDate]['Quantidades de Clientes'] !== undefined) {
-                            lastAccessoriasValue = currentData.accessorias[sector][lastDate]['Quantidades de Clientes'];
-                        }
-                    }
-                }
-                
-                // Usar apenas um ponto no gráfico com os últimos valores
-                labels.push('Último');
-                sittaxData.push(lastSittaxValue);
-                accessoriasData.push(lastAccessoriasValue);
+                window.currentMonthDays.forEach(day => {
+                    const dayLabel = new Date(day).getDate();
+                    labels.push(dayLabel.toString());
+                    
+                    // Sittax: somar onboarding + ongoing para cada dia
+                    const sittaxOnboarding = getValueForDate('sittax', 'onboarding', day, 'Quantidades de Clientes');
+                    const sittaxOngoing = getValueForDate('sittax', 'ongoing', day, 'Quantidades de Clientes');
+                    const sittaxClientes = sittaxOnboarding + sittaxOngoing;
+                    
+                    // Acessorias: somar onboarding + ongoing para cada dia
+                    const accessoriasOnboarding = getValueForDate('accessorias', 'onboarding', day, 'Quantidades de Clientes');
+                    const accessoriasOngoing = getValueForDate('accessorias', 'ongoing', day, 'Quantidades de Clientes');
+                    const accessoriasClientes = accessoriasOnboarding + accessoriasOngoing;
+                    
+                    sittaxData.push(sittaxClientes);
+                    accessoriasData.push(accessoriasClientes);
+                });
             }
             
             // Atualizar gráfico
@@ -3078,6 +3011,17 @@
             charts.clientesChart.update();
         }
         
+        // NOVA FUNÇÃO: Obter valor específico para uma data
+        function getValueForDate(product, sector, date, indicatorName) {
+            if (currentData[product] && 
+                currentData[product][sector] && 
+                currentData[product][sector][date] &&
+                currentData[product][sector][date][indicatorName] !== undefined) {
+                return currentData[product][sector][date][indicatorName];
+            }
+            return 0;
+        }
+        
         function updateCsatChart() {
             if (!charts.csatChart) return;
             
@@ -3085,32 +3029,10 @@
             const sittaxData = [];
             const accessoriasData = [];
             
-            // Calcular CSAT por setor - CORREÇÃO: usar o último valor
+            // Calcular CSAT por setor - usar o último valor
             sectors.forEach(sector => {
-                let sittaxCsat = 0;
-                let accessoriasCsat = 0;
-                
-                // Sittax - último valor
-                if (currentData.sittax && currentData.sittax[sector]) {
-                    const dates = Object.keys(currentData.sittax[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.sittax[sector][lastDate]['CSAT'] !== undefined) {
-                            sittaxCsat = currentData.sittax[sector][lastDate]['CSAT'];
-                        }
-                    }
-                }
-                
-                // Acessorias - último valor
-                if (currentData.accessorias && currentData.accessorias[sector]) {
-                    const dates = Object.keys(currentData.accessorias[sector]).sort();
-                    if (dates.length > 0) {
-                        const lastDate = dates[dates.length - 1];
-                        if (currentData.accessorias[sector][lastDate]['CSAT'] !== undefined) {
-                            accessoriasCsat = currentData.accessorias[sector][lastDate]['CSAT'];
-                        }
-                    }
-                }
+                const sittaxCsat = getLastValue('sittax', sector, 'CSAT');
+                const accessoriasCsat = getLastValue('accessorias', sector, 'CSAT');
                 
                 sittaxData.push(sittaxCsat);
                 accessoriasData.push(accessoriasCsat);
@@ -3125,29 +3047,12 @@
         function updateCancelamentosChart() {
             if (!charts.cancelamentosChart) return;
             
-            let sittaxCancelamentos = 0;
-            let accessoriasCancelamentos = 0;
+            // CORREÇÃO: Usar a soma de onboarding + ongoing da data mais recente
+            const sittaxCancelamentos = getLastValue('sittax', 'onboarding', 'Cancelamentos') + 
+                                      getLastValue('sittax', 'ongoing', 'Cancelamentos');
             
-            // Calcular cancelamentos totais - CORREÇÃO: usar o último valor
-            for (const sector in currentData.sittax) {
-                const dates = Object.keys(currentData.sittax[sector]).sort();
-                if (dates.length > 0) {
-                    const lastDate = dates[dates.length - 1];
-                    if (currentData.sittax[sector][lastDate]['Cancelamentos'] !== undefined) {
-                        sittaxCancelamentos = currentData.sittax[sector][lastDate]['Cancelamentos'];
-                    }
-                }
-            }
-            
-            for (const sector in currentData.accessorias) {
-                const dates = Object.keys(currentData.accessorias[sector]).sort();
-                if (dates.length > 0) {
-                    const lastDate = dates[dates.length - 1];
-                    if (currentData.accessorias[sector][lastDate]['Cancelamentos'] !== undefined) {
-                        accessoriasCancelamentos = currentData.accessorias[sector][lastDate]['Cancelamentos'];
-                    }
-                }
-            }
+            const accessoriasCancelamentos = getLastValue('accessorias', 'onboarding', 'Cancelamentos') + 
+                                           getLastValue('accessorias', 'ongoing', 'Cancelamentos');
             
             // Atualizar gráfico
             charts.cancelamentosChart.data.datasets[0].data = [sittaxCancelamentos, accessoriasCancelamentos];
