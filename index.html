@@ -123,7 +123,7 @@
         
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
@@ -159,40 +159,6 @@
         .chart-container {
             height: 300px;
             position: relative;
-        }
-        
-        .summary {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-        
-        .summary-item {
-            background-color: white;
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .summary-item:hover {
-            transform: translateY(-3px);
-        }
-        
-        .summary-value {
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-        
-        .positive {
-            color: var(--success-color);
-        }
-        
-        .negative {
-            color: var(--accent-color);
         }
         
         .tabs {
@@ -861,46 +827,31 @@
         </div>
 
         <div id="dashboard-tab" class="tab-content active">
-            <div class="summary">
-                <div class="summary-item">
-                    <h3>Total de Clientes</h3>
-                    <div class="summary-value" id="totalClientes">0</div>
-                    <p id="clientesPorProduto">Sittax: 0 | Acessorias: 0</p>
-                </div>
-                <div class="summary-item">
-                    <h3>CSAT Geral</h3>
-                    <div class="summary-value positive" id="csatGeral">0%</div>
-                    <p>Média entre todos os setores</p>
-                </div>
-                <div class="summary-item">
-                    <h3>Cancelamentos</h3>
-                    <div class="summary-value negative" id="totalCancelamentos">0</div>
-                    <p>Total de cancelamentos</p>
-                </div>
-            </div>
-
             <div class="dashboard">
+                <!-- Gráfico 1: Evolução de Clientes por Setor -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Evolução de Clientes por Setor</h3>
+                        <h3 class="card-title">Evolução de Clientes</h3>
                     </div>
                     <div class="chart-container">
                         <canvas id="clientesChart"></canvas>
                     </div>
                 </div>
 
+                <!-- Gráfico 2: CSAT por Setor -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">CSAT por Setor</h3>
+                        <h3 class="card-title">CSAT por Setor (%)</h3>
                     </div>
                     <div class="chart-container">
                         <canvas id="csatChart"></canvas>
                     </div>
                 </div>
 
+                <!-- Gráfico 3: Cancelamentos por Setor -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Cancelamentos por Setor</h3>
+                        <h3 class="card-title">Distribuição de Cancelamentos</h3>
                     </div>
                     <div class="chart-container">
                         <canvas id="cancelamentosChart"></canvas>
@@ -1318,7 +1269,7 @@
                     { name: "Taxa de Inatividade (%)", type: "percentual" }
                 ],
                 onboarding: [
-                    { name: "Quantidades de Clientes (dia)", type: "numerico" },
+                    { name: "Quantidades de Clientes", type: "numerico" },
                     { name: "Quantidades de Reuniões", type: "numerico" },
                     { name: "CSAT", type: "percentual" },
                     { name: "Migração Acessórias", type: "numerico" },
@@ -1355,7 +1306,7 @@
                     { name: "Taxa de Inatividade (%)", type: "percentual" }
                 ],
                 onboarding: [
-                    { name: "Quantidades de Clientes (dia)", type: "numerico" },
+                    { name: "Quantidades de Clientes", type: "numerico" },
                     { name: "Quantidades de Reuniões", type: "numerico" },
                     { name: "CSAT", type: "percentual" },
                     { name: "Migração Sittax", type: "numerico" },
@@ -1444,7 +1395,6 @@
                     
                     // Atualizar interface
                     updateAllTables();
-                    updateDashboard();
                     updateComparativo();
                     updateCharts();
                     updateMonthInfo();
@@ -1458,7 +1408,6 @@
                         accessorias: {}
                     };
                     updateAllTables();
-                    updateDashboard();
                     updateComparativo();
                     updateMonthInfo();
                 }
@@ -1633,9 +1582,6 @@
             // Atualizar tabelas
             updateAllTables();
             
-            // Atualizar dashboard
-            updateDashboard();
-            
             // Atualizar comparativo
             updateComparativo();
             
@@ -1693,8 +1639,14 @@
             
             // Gerar array com todos os dias do mês
             const days = [];
+            const currentDate = new Date();
+            
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateStr = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const dateObj = new Date(dateStr);
+                
+                // ADIÇÃO: Permitir datas futuras (como 2025-10-31)
+                // Remover a verificação que impedia datas futuras
                 days.push(dateStr);
             }
             
@@ -1843,7 +1795,7 @@
             const ctx2 = document.getElementById('csatChart').getContext('2d');
             const ctx3 = document.getElementById('cancelamentosChart').getContext('2d');
             
-            // Inicializar gráficos vazios
+            // Gráfico 1: Evolução de Clientes (Linha)
             charts.clientesChart = new Chart(ctx1, {
                 type: 'line',
                 data: {
@@ -1852,18 +1804,20 @@
                         {
                             label: 'Sittax',
                             data: [],
-                            borderColor: '#3498db',
+                            borderColor: '#e67e22',
                             backgroundColor: 'rgba(52, 152, 219, 0.1)',
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            borderWidth: 2
                         },
                         {
                             label: 'Acessorias',
                             data: [],
-                            borderColor: '#e74c3c',
+                            borderColor: '#3498db',
                             backgroundColor: 'rgba(231, 76, 60, 0.1)',
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            borderWidth: 2
                         }
                     ]
                 },
@@ -1873,17 +1827,34 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Evolução de Clientes'
+                            text: 'Evolução de Clientes',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
                         }
                     },
                     scales: {
                         y: {
-                            beginAtZero: true
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Quantidade de Clientes'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Dias do Mês'
+                            }
                         }
                     }
                 }
             });
             
+            // Gráfico 2: CSAT por Setor (Barras)
             charts.csatChart = new Chart(ctx2, {
                 type: 'bar',
                 data: {
@@ -1892,12 +1863,16 @@
                         {
                             label: 'Sittax',
                             data: [0, 0, 0, 0, 0],
-                            backgroundColor: 'rgba(52, 152, 219, 0.7)'
+                            backgroundColor: '#e67e22',
+                            borderColor: '#e67e22',
+                            borderWidth: 1
                         },
                         {
                             label: 'Acessorias',
                             data: [0, 0, 0, 0, 0],
-                            backgroundColor: 'rgba(231, 76, 60, 0.7)'
+                            backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            borderWidth: 1
                         }
                     ]
                 },
@@ -1907,18 +1882,29 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'CSAT por Setor (%)'
+                            text: 'CSAT por Setor (%)',
+                            font: {
+                                size: 16
+                            }
+                        },
+                        legend: {
+                            position: 'top'
                         }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            max: 100
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'CSAT (%)'
+                            }
                         }
                     }
                 }
             });
             
+            // Gráfico 3: Cancelamentos por Setor (Rosquinha)
             charts.cancelamentosChart = new Chart(ctx3, {
                 type: 'doughnut',
                 data: {
@@ -1926,8 +1912,12 @@
                     datasets: [{
                         data: [0, 0],
                         backgroundColor: [
-                            'rgba(52, 152, 219, 0.7)',
-                            'rgba(231, 76, 60, 0.7)'
+                            '#e67e22',
+                            'rgba(52, 152, 219, 1)'
+                        ],
+                        borderColor: [
+                            '#e67e22',
+                            'rgba(52, 152, 219, 1)'
                         ],
                         borderWidth: 1
                     }]
@@ -1938,7 +1928,10 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Distribuição de Cancelamentos'
+                            text: 'Distribuição de Cancelamentos',
+                            font: {
+                                size: 16
+                            }
                         },
                         legend: {
                             position: 'bottom'
@@ -2242,6 +2235,43 @@
             updateAllTables();
         }
         
+        // ADICIONAR esta função para verificar e adicionar datas automaticamente
+        function checkAndAddDateToMonth(date) {
+            const dateObj = new Date(date);
+            const dateMonthKey = `${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}`;
+            
+            // Se a data pertence a um mês diferente do atual, mudar para aquele mês
+            if (dateMonthKey !== currentMonth) {
+                // Verificar se o mês já existe na lista
+                let monthExists = availableMonths.find(m => m.key === dateMonthKey);
+                
+                // Se não existir, adicionar
+                if (!monthExists) {
+                    const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                    availableMonths.push({ key: dateMonthKey, name: monthName });
+                    saveMonthsToStorage();
+                    
+                    // Atualizar seletor
+                    const monthSelect = document.getElementById('monthSelect');
+                    const option = document.createElement('option');
+                    option.value = dateMonthKey;
+                    option.textContent = monthName;
+                    monthSelect.appendChild(option);
+                }
+                
+                // Mudar para o mês da data
+                currentMonth = dateMonthKey;
+                document.getElementById('monthSelect').value = dateMonthKey;
+                loadMonthData(dateMonthKey);
+            }
+            
+            // Garantir que a data esteja na lista de dias do mês
+            if (window.currentMonthDays && !window.currentMonthDays.includes(date)) {
+                window.currentMonthDays.push(date);
+                window.currentMonthDays.sort((a, b) => new Date(a) - new Date(b));
+            }
+        }
+        
         async function submitData() {
             const product = document.getElementById('productSelect').value;
             const sector = document.getElementById('sectorSelect').value;
@@ -2252,14 +2282,27 @@
                 return;
             }
             
-            // Verificar se a data pertence ao mês atual
-            const selectedDate = new Date(date);
-            const currentMonthDate = new Date(currentMonth + '-01');
+            // REMOÇÃO da verificação que impedia datas de outros meses
+            // Permitir qualquer data, incluindo futuras como 2025-10-31
             
-            if (selectedDate.getMonth() !== currentMonthDate.getMonth() || 
-                selectedDate.getFullYear() !== currentMonthDate.getFullYear()) {
-                alert('A data selecionada não pertence ao mês atual!');
-                return;
+            // Verificar e adicionar a data ao mês correto
+            checkAndAddDateToMonth(date);
+            
+            // Verificar se a data já existe no array de dias do mês
+            // Se não existir, adicioná-la
+            if (window.currentMonthDays && !window.currentMonthDays.includes(date)) {
+                window.currentMonthDays.push(date);
+                window.currentMonthDays.sort((a, b) => new Date(a) - new Date(b));
+                
+                // Remover da lista de excluídas se estiver lá
+                const excludedDates = getExcludedDatesForMonth(currentMonth);
+                const excludedIndex = excludedDates.indexOf(date);
+                if (excludedIndex !== -1) {
+                    excludedDates.splice(excludedIndex, 1);
+                    saveExcludedDatesForMonth(currentMonth, excludedDates);
+                }
+                
+                console.log(`Data ${date} adicionada ao mês ${currentMonth}`);
             }
             
             // Coletar dados dos indicadores
@@ -2291,7 +2334,6 @@
             
             // Atualizar a interface
             updateAllTables();
-            updateDashboard();
             updateComparativo();
             updateCharts();
             updateMonthInfo();
@@ -2379,7 +2421,6 @@
                 
                 loadManageDataTable();
                 updateAllTables();
-                updateDashboard();
                 updateComparativo();
                 updateCharts();
                 updateMonthInfo();
@@ -2577,15 +2618,8 @@
                     return;
                 }
                 
-                // Verificar se a data pertence ao mês atual
-                const newDateObj = new Date(newDate);
-                const currentMonthObj = new Date(currentMonth + '-01');
-                
-                if (newDateObj.getMonth() !== currentMonthObj.getMonth() || 
-                    newDateObj.getFullYear() !== currentMonthObj.getFullYear()) {
-                    alert('A data deve pertencer ao mês atual!');
-                    return;
-                }
+                // Verificar e adicionar a data ao mês correto
+                checkAndAddDateToMonth(newDate);
                 
                 // Verificar se a data já existe
                 if (window.currentMonthDays.includes(newDate)) {
@@ -2751,7 +2785,6 @@
                 await saveDataToFirebase();
                 
                 // Atualizar dashboard e gráficos
-                updateDashboard();
                 updateComparativo();
                 updateCharts();
                 updateMonthInfo();
@@ -2828,42 +2861,6 @@
             }
         }
         
-        function updateDashboard() {
-            // CORREÇÃO: Somar onboarding + ongoing para cada produto na data mais recente
-            let totalClientesSittax = 0;
-            let totalClientesAccessorias = 0;
-            let totalCancelamentosSittax = 0;
-            let totalCancelamentosAccessorias = 0;
-            
-            // Para Sittax: encontrar a data mais recente e somar onboarding + ongoing
-            const sittaxOnboarding = getLastValue('sittax', 'onboarding', 'Quantidades de Clientes');
-            const sittaxOngoing = getLastValue('sittax', 'ongoing', 'Quantidades de Clientes');
-            totalClientesSittax = sittaxOnboarding + sittaxOngoing;
-            
-            const sittaxCancelamentosOnboarding = getLastValue('sittax', 'onboarding', 'Cancelamentos');
-            const sittaxCancelamentosOngoing = getLastValue('sittax', 'ongoing', 'Cancelamentos');
-            totalCancelamentosSittax = sittaxCancelamentosOnboarding + sittaxCancelamentosOngoing;
-            
-            // Para Acessorias: encontrar a data mais recente e somar onboarding + ongoing
-            const accessoriasOnboarding = getLastValue('accessorias', 'onboarding', 'Quantidades de Clientes');
-            const accessoriasOngoing = getLastValue('accessorias', 'ongoing', 'Quantidades de Clientes');
-            totalClientesAccessorias = accessoriasOnboarding + accessoriasOngoing;
-            
-            const accessoriasCancelamentosOnboarding = getLastValue('accessorias', 'onboarding', 'Cancelamentos');
-            const accessoriasCancelamentosOngoing = getLastValue('accessorias', 'ongoing', 'Cancelamentos');
-            totalCancelamentosAccessorias = accessoriasCancelamentosOnboarding + accessoriasCancelamentosOngoing;
-            
-            // Atualizar elementos do dashboard
-            document.getElementById('totalClientes').textContent = totalClientesSittax + totalClientesAccessorias;
-            document.getElementById('clientesPorProduto').textContent = `Sittax: ${totalClientesSittax} | Acessorias: ${totalClientesAccessorias}`;
-            
-            // CSAT Geral
-            const avgCsatGeral = calculateCsatGeral();
-            document.getElementById('csatGeral').textContent = avgCsatGeral.toFixed(1) + '%';
-            
-            document.getElementById('totalCancelamentos').textContent = totalCancelamentosSittax + totalCancelamentosAccessorias;
-        }
-        
         // NOVA FUNÇÃO: Obter o último valor de um indicador específico
         function getLastValue(product, sector, indicatorName) {
             if (currentData[product] && currentData[product][sector]) {
@@ -2878,24 +2875,15 @@
             return 0;
         }
         
-        // NOVA FUNÇÃO: Calcular CSAT Geral corretamente
-        function calculateCsatGeral() {
-            let totalCsat = 0;
-            let countCsat = 0;
-            
-            // Para cada produto
-            for (const product in currentData) {
-                // Para cada setor
-                for (const sector in currentData[product]) {
-                    const csatValue = getLastValue(product, sector, 'CSAT');
-                    if (csatValue > 0) {
-                        totalCsat += csatValue;
-                        countCsat++;
-                    }
-                }
+        // NOVA FUNÇÃO: Obter valor específico para uma data
+        function getValueForDate(product, sector, date, indicatorName) {
+            if (currentData[product] && 
+                currentData[product][sector] && 
+                currentData[product][sector][date] &&
+                currentData[product][sector][date][indicatorName] !== undefined) {
+                return currentData[product][sector][date][indicatorName];
             }
-            
-            return countCsat > 0 ? totalCsat / countCsat : 0;
+            return 0;
         }
         
         function updateComparativo() {
@@ -2979,7 +2967,7 @@
         function updateClientesChart() {
             if (!charts.clientesChart) return;
             
-            // CORREÇÃO: Mostrar evolução por dia do mês selecionado, somando onboarding + ongoing
+            // CORREÇÃO: Mostrar evolução por dia do mês selecionado, somando onboarding + ongoing da data específica
             const labels = [];
             const sittaxData = [];
             const accessoriasData = [];
@@ -3011,17 +2999,6 @@
             charts.clientesChart.update();
         }
         
-        // NOVA FUNÇÃO: Obter valor específico para uma data
-        function getValueForDate(product, sector, date, indicatorName) {
-            if (currentData[product] && 
-                currentData[product][sector] && 
-                currentData[product][sector][date] &&
-                currentData[product][sector][date][indicatorName] !== undefined) {
-                return currentData[product][sector][date][indicatorName];
-            }
-            return 0;
-        }
-        
         function updateCsatChart() {
             if (!charts.csatChart) return;
             
@@ -3047,12 +3024,13 @@
         function updateCancelamentosChart() {
             if (!charts.cancelamentosChart) return;
             
-            // CORREÇÃO: Usar a soma de onboarding + ongoing da data mais recente
-            const sittaxCancelamentos = getLastValue('sittax', 'onboarding', 'Cancelamentos') + 
-                                      getLastValue('sittax', 'ongoing', 'Cancelamentos');
+            // CORREÇÃO: Usar a soma de onboarding + ongoing da data de HOJE
+            const hoje = new Date().toISOString().split('T')[0];
+            const sittaxCancelamentos = getValueForDate('sittax', 'onboarding', hoje, 'Cancelamentos') + 
+                                      getValueForDate('sittax', 'ongoing', hoje, 'Cancelamentos');
             
-            const accessoriasCancelamentos = getLastValue('accessorias', 'onboarding', 'Cancelamentos') + 
-                                           getLastValue('accessorias', 'ongoing', 'Cancelamentos');
+            const accessoriasCancelamentos = getValueForDate('accessorias', 'onboarding', hoje, 'Cancelamentos') + 
+                                           getValueForDate('accessorias', 'ongoing', hoje, 'Cancelamentos');
             
             // Atualizar gráfico
             charts.cancelamentosChart.data.datasets[0].data = [sittaxCancelamentos, accessoriasCancelamentos];
